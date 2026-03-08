@@ -1,0 +1,6 @@
+{
+  "stack": "ApiError: {\"error\":{\"code\":404,\"message\":\"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.\",\"status\":\"NOT_FOUND\"}}\n    at throwErrorIfNotOK (file:///C:/Udit/Stocky/node_modules/@google/genai/dist/node/index.mjs:12330:30)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async file:///C:/Udit/Stocky/node_modules/@google/genai/dist/node/index.mjs:12033:13\n    at async Models.generateContent (file:///C:/Udit/Stocky/node_modules/@google/genai/dist/node/index.mjs:13434:24)\n    at async run (file:///C:/Udit/Stocky/test.js:11:26)",
+  "message": "{\"error\":{\"code\":404,\"message\":\"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.\",\"status\":\"NOT_FOUND\"}}",
+  "name": "ApiError",
+  "status": 404
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Stateless Stock Predictor",
+  "description": "A stateless stock prediction app using Alpha Vantage and Gemini AI.",
+  "requestFramePermissions": []
+}
