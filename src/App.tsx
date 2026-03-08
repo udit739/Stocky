@@ -43,7 +43,15 @@ export default function App() {
     try {
       // Single fetch: stock data + technical prediction bundled together
       const stockResponse = await fetch(`/api/stock-data?symbol=${symbol}`);
-      const data = await stockResponse.json();
+      const text = await stockResponse.text();
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(text || 'Server returned an invalid response');
+      }
+
       if (!stockResponse.ok) {
         throw new Error(data.error || 'Failed to fetch stock data');
       }

@@ -1,7 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import fetch from "node-fetch";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+    if (req.method === "OPTIONS") {
+        return res.status(200).end();
+    }
+
     const { q } = req.query;
     const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
 
@@ -30,9 +36,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             currency: m["8. currency"],
         }));
 
-        res.json({ bestMatches: matches });
-    } catch (error) {
+        return res.json({ bestMatches: matches });
+    } catch (error: any) {
         console.error("Error searching symbols:", error);
-        res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: error.message || "Internal server error" });
     }
 }

@@ -1,10 +1,82 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import fetch from "node-fetch";
-import { createRequire } from "module";
 import { GoogleGenAI } from "@google/genai";
-import { calculateRSI, calculateSMA, calculateEMA, calculateMACD } from "../src/utils/technicalAnalysis";
 
-const require = createRequire(import.meta.url);
+// ── Technical Analysis Functions (inlined for serverless) ──
+
+function calculateEMA(prices: number[], period: number): number[] {
+  if (prices.length === 0) return [];
+  const k = 2 / (period + 1);
+  let seed = 0;
+  const start = Math.min(period, prices.length);
+  for (let i = 0; i < start; i++) seed += prices[i];
+  seed /= start;
+  const ema: number[] = new Array(prices.length).fill(0);
+  ema[start - 1] = seed;
+  for (let i = start; i < prices.length; i++) {
+    ema[i] = prices[i] * k + ema[i - 1] * (1 - k);
+  }
+  for (let i = 0; i < start - 1; i++) {
+    ema[i] = ema[start - 1];
+  }
+  return ema;
+}
+
+function calculateMACD(prices: number[]) {
+  const ema12 = calculateEMA(prices, 12);
+  const ema26 = calculateEMA(prices, 26);
+  const macd = prices.map((_, i) => ema12[i] - ema26[i]);
+  const signal = calculateEMA(macd, 9);
+  const histogram = macd.map((v, i) => v - signal[i]);
+  return { macd, signal, histogram };
+}
+
+function calculateRSI(closingPrices: number[], period: number = 14) {
+  if (closingPrices.length < period + 1) {
+    return { rsiData: new Array(closingPrices.length).fill(null), latestRSI: null };
+  }
+  const rsiData: (number | null)[] = new Array(period).fill(null);
+  let avgGain = 0;
+  let avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const change = closingPrices[i] - closingPrices[i - 1];
+    if (change > 0) avgGain += change;
+    else avgLoss += Math.abs(change);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+  let rs = avgGain / avgLoss;
+  let rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+  rsiData.push(rsi);
+  for (let i = period + 1; i < closingPrices.length; i++) {
+    const change = closingPrices[i] - closingPrices[i - 1];
+    let gain = 0, loss = 0;
+    if (change > 0) gain = change;
+    else loss = Math.abs(change);
+    avgGain = ((avgGain * (period - 1)) + gain) / period;
+    avgLoss = ((avgLoss * (period - 1)) + loss) / period;
+    rs = avgGain / avgLoss;
+    rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + rs));
+    rsiData.push(rsi);
+  }
+  const firstValidRSI = rsiData[period];
+  for (let i = 0; i < period; i++) rsiData[i] = firstValidRSI;
+  return { rsiData: rsiData as number[], latestRSI: rsiData[rsiData.length - 1] as number };
+}
+
+function calculateSMA(closingPrices: number[], period: number): (number | null)[] {
+  if (closingPrices.length < period) return new Array(closingPrices.length).fill(null);
+  const smaData: (number | null)[] = new Array(period - 1).fill(null);
+  for (let i = period - 1; i < closingPrices.length; i++) {
+    let sum = 0;
+    for (let j = 0; j < period; j++) sum += closingPrices[i - j];
+    smaData.push(sum / period);
+  }
+  const firstValidSMA = smaData[period - 1];
+  for (let i = 0; i < period - 1; i++) smaData[i] = firstValidSMA;
+  return smaData;
+}
+
+// ── Helper Functions ──
 
 function getCurrencySymbol(symbol: string): string {
   const clean = symbol.trim().toUpperCase();
@@ -27,8 +99,12 @@ function computeARIMAForecast(prices: number[], steps = 7): number[] {
     const [forecast] = model.predict(steps) as [number[], number[]];
     return (forecast as number[]).map((v: number) => Math.max(0, v));
   } catch (err) {
-    console.error("[ARIMA] Forecasting failed:", err);
-    return Array(steps).fill(prices[prices.length - 1]);
+    console.error("[ARIMA] Forecasting failed, using simple fallback:", err);
+    // Simple linear extrapolation fallback
+    const lastPrice = prices[prices.length - 1];
+    const secondLast = prices[prices.length - 2] || lastPrice;
+    const dailyChange = lastPrice - secondLast;
+    return Array.from({ length: steps }, (_, i) => Math.max(0, lastPrice + dailyChange * (i + 1)));
   }
 }
 
@@ -46,63 +122,54 @@ function computeTechnicalPrediction(
 ): PredictionResult {
   const n = data.length;
   if (n < 2) {
-    return { trend: "Neutral", signal: "Hold", confidence: 50, prediction: "Insufficient data.", explanation: "Not enough data points to generate a signal." };
+    return { trend: "Neutral", signal: "Hold", confidence: 50, prediction: "Insufficient data.", explanation: "Not enough data points." };
   }
-
   const latest = data[n - 1];
   const closingPrices = data.map(d => d.close);
-
   let score = 0;
   const bullish: string[] = [];
   const bearish: string[] = [];
 
   const rsi = latest.rsi;
   if (rsi !== null) {
-    if (rsi < 30) { score += 2; bullish.push(`RSI oversold at ${rsi.toFixed(1)} — strong buy pressure`); }
+    if (rsi < 30) { score += 2; bullish.push(`RSI oversold at ${rsi.toFixed(1)}`); }
     else if (rsi < 40) { score += 1; bullish.push(`RSI near oversold at ${rsi.toFixed(1)}`); }
-    else if (rsi > 70) { score -= 2; bearish.push(`RSI overbought at ${rsi.toFixed(1)} — potential reversal`); }
+    else if (rsi > 70) { score -= 2; bearish.push(`RSI overbought at ${rsi.toFixed(1)}`); }
     else if (rsi > 60) { score -= 1; bearish.push(`RSI near overbought at ${rsi.toFixed(1)}`); }
     else { bullish.push(`RSI neutral at ${rsi.toFixed(1)}`); }
   }
 
   const { ma7, ma20, ma50 } = latest;
   if (ma7 !== null && ma20 !== null) {
-    if (ma7 > ma20) { score += 1; bullish.push("MA7 above MA20 (short-term uptrend)"); }
-    else { score -= 1; bearish.push("MA7 below MA20 (short-term downtrend)"); }
+    if (ma7 > ma20) { score += 1; bullish.push("MA7 above MA20"); } else { score -= 1; bearish.push("MA7 below MA20"); }
   }
-
   if (ma20 !== null && ma50 !== null) {
-    if (ma20 > ma50) { score += 1; bullish.push("MA20 above MA50 (medium-term uptrend)"); }
-    else { score -= 1; bearish.push("MA20 below MA50 (medium-term downtrend)"); }
+    if (ma20 > ma50) { score += 1; bullish.push("MA20 above MA50"); } else { score -= 1; bearish.push("MA20 below MA50"); }
   }
-
   if (ma50 !== null) {
-    if (latest.close > ma50) { score += 1; bullish.push("Price trading above MA50 support"); }
-    else { score -= 1; bearish.push("Price trading below MA50 — bearish territory"); }
+    if (latest.close > ma50) { score += 1; bullish.push("Price above MA50"); } else { score -= 1; bearish.push("Price below MA50"); }
   }
 
   const macdResult = calculateMACD(closingPrices);
   const latestMACD = macdResult.macd[n - 1];
-  const latestSignal = macdResult.signal[n - 1];
+  const latestSignalVal = macdResult.signal[n - 1];
   const prevHistogram = macdResult.histogram[n - 2];
   const latestHistogram = macdResult.histogram[n - 1];
 
-  if (latestMACD > latestSignal) {
-    score += 2;
-    bullish.push(`MACD bullish (MACD ${latestMACD.toFixed(2)} > Signal ${latestSignal.toFixed(2)})`);
-    if (latestHistogram > prevHistogram) { score += 1; bullish.push("MACD histogram expanding — momentum building"); }
+  if (latestMACD > latestSignalVal) {
+    score += 2; bullish.push(`MACD bullish`);
+    if (latestHistogram > prevHistogram) { score += 1; bullish.push("MACD momentum building"); }
   } else {
-    score -= 2;
-    bearish.push(`MACD bearish (MACD ${latestMACD.toFixed(2)} < Signal ${latestSignal.toFixed(2)})`);
-    if (latestHistogram < prevHistogram) { score -= 1; bearish.push("MACD histogram widening downward — selling pressure"); }
+    score -= 2; bearish.push(`MACD bearish`);
+    if (latestHistogram < prevHistogram) { score -= 1; bearish.push("MACD selling pressure"); }
   }
 
   if (arimaForecast.length > 0) {
     const forecastEnd = arimaForecast[arimaForecast.length - 1];
     const pct = ((forecastEnd - latest.close) / latest.close) * 100;
-    if (pct > 2) { score += 1; bullish.push(`ARIMA projects +${pct.toFixed(1)}% over next 7 days`); }
-    else if (pct < -2) { score -= 1; bearish.push(`ARIMA projects ${pct.toFixed(1)}% decline over next 7 days`); }
-    else { bullish.push(`ARIMA forecast relatively flat (${pct.toFixed(1)}%)`); }
+    if (pct > 2) { score += 1; bullish.push(`ARIMA projects +${pct.toFixed(1)}%`); }
+    else if (pct < -2) { score -= 1; bearish.push(`ARIMA projects ${pct.toFixed(1)}%`); }
+    else { bullish.push(`ARIMA flat (${pct.toFixed(1)}%)`); }
   }
 
   if (n >= 20) {
@@ -110,47 +177,40 @@ function computeTechnicalPrediction(
     const avgVol20 = data.slice(-20).reduce((s, d) => s + d.volume, 0) / 20;
     const recentPriceChange = latest.close - data[n - 6].close;
     if (avgVol5 > avgVol20 * 1.15) {
-      if (recentPriceChange > 0) { score += 1; bullish.push("Rising volume confirming upward move"); }
-      else { score -= 1; bearish.push("Rising volume on a down move — selling pressure"); }
+      if (recentPriceChange > 0) { score += 1; bullish.push("Rising volume on upward move"); }
+      else { score -= 1; bearish.push("Rising volume on down move"); }
     }
   }
 
   let trend: PredictionResult["trend"];
   let signal: PredictionResult["signal"];
-
   if (score >= 3) { trend = "Bullish"; signal = "Buy"; }
   else if (score <= -3) { trend = "Bearish"; signal = "Sell"; }
   else { trend = "Neutral"; signal = "Hold"; }
 
   const confidence = Math.min(95, 50 + Math.abs(score) * 7);
-
   const direction = trend === "Bullish" ? "upward" : trend === "Bearish" ? "downward" : "sideways";
-  const prediction = `Technical indicators suggest a ${direction} move in the near term. Signal score: ${score > 0 ? "+" : ""}${score}.`;
+  const prediction = `Technical indicators suggest a ${direction} move. Signal score: ${score > 0 ? "+" : ""}${score}.`;
 
   let explanation = "";
   if (bullish.length > 0 && bearish.length > 0) {
-    explanation = `The stock is currently showing a mixed technical setup. Positive indicators include: ${bullish.join("; ")}. Conversely, bearish signs show: ${bearish.join("; ")}.`;
+    explanation = `Mixed setup. Bullish: ${bullish.join("; ")}. Bearish: ${bearish.join("; ")}.`;
   } else if (bullish.length > 0) {
-    explanation = `The stock is exhibiting strong upward momentum. Positive indicators include: ${bullish.join("; ")}.`;
+    explanation = `Strong upward momentum. ${bullish.join("; ")}.`;
   } else if (bearish.length > 0) {
-    explanation = `The stock is currently facing significant downward pressure. Bearish indicators include: ${bearish.join("; ")}.`;
+    explanation = `Downward pressure. ${bearish.join("; ")}.`;
   } else {
-    explanation = "Technical indicators are mostly flat, suggesting a neutral trend with no clear breakout signals.";
+    explanation = "Indicators flat, no clear breakout signals.";
   }
 
   return { trend, signal, confidence, prediction, explanation };
 }
 
 async function generateAIAnalysis(
-  symbol: string,
-  latestPrice: number,
-  priceChange1d: number,
-  priceChange5d: number | null,
-  priceChange1m: number | null,
-  latestRSI: number | null,
-  arimaForecast: number[],
-  prediction: PredictionResult,
-  currencySymbol: string
+  symbol: string, latestPrice: number, priceChange1d: number,
+  priceChange5d: number | null, priceChange1m: number | null,
+  latestRSI: number | null, arimaForecast: number[],
+  prediction: PredictionResult, currencySymbol: string
 ): Promise<{ summary: string; reasoning: string } | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -175,8 +235,8 @@ Key Signals: ${prediction.explanation}
 
 Respond ONLY with a JSON object in this exact format (no markdown, no code fences):
 {
-  "summary": "A 2-3 sentence summary of the stock's current situation and short-term outlook, exactly as shown in the mockup under the AI Analysis section.",
-  "reasoning": "A 3-4 sentence deeper analysis explaining the key technical factors driving the signal, potential risks, and what to watch for. Keep it flowing like a single paragraph."
+  "summary": "A 2-3 sentence summary of the stock's current situation and short-term outlook.",
+  "reasoning": "A 3-4 sentence deeper analysis explaining the key technical factors driving the signal, potential risks, and what to watch for."
 }`;
 
     const response = await ai.models.generateContent({
@@ -187,17 +247,24 @@ Respond ONLY with a JSON object in this exact format (no markdown, no code fence
     const text = response.text?.trim() ?? "";
     const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     const parsed = JSON.parse(cleaned);
-    return {
-      summary: parsed.summary ?? "",
-      reasoning: parsed.reasoning ?? "",
-    };
+    return { summary: parsed.summary ?? "", reasoning: parsed.reasoning ?? "" };
   } catch (err) {
     console.error("[Gemini] AI analysis failed:", err);
     return null;
   }
 }
 
+// ── Main Handler ──
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   const { symbol } = req.query;
   const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
 
@@ -208,7 +275,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const cleanSymbol = symbol.trim().toUpperCase();
 
   if (!apiKey) {
-    return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY is not configured" });
+    return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY is not configured. Please add it in Vercel Environment Variables." });
   }
 
   try {
@@ -219,26 +286,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data: any = await response.json();
 
     if (data["Error Message"]) {
-      console.error(`[stock-data] Alpha Vantage Error for ${cleanSymbol}:`, data["Error Message"]);
-      let errorMessage = `Alpha Vantage Error: Symbol "${cleanSymbol}" not found.`;
+      let errorMessage = `Symbol "${cleanSymbol}" not found.`;
       if (!cleanSymbol.includes(".")) {
-        errorMessage += ` Try adding an exchange suffix like "${cleanSymbol}.BSE" or "${cleanSymbol}.NSE" for Indian stocks.`;
+        errorMessage += ` Try "${cleanSymbol}.BSE" or "${cleanSymbol}.NSE" for Indian stocks.`;
       }
       return res.status(404).json({ error: errorMessage });
     }
 
-    let timeSeries = data["Time Series (Daily)"];
-
     if (data["Note"] || data["Information"]) {
-      console.warn(`[stock-data] Alpha Vantage rate limit hit for ${cleanSymbol}`);
-      return res.status(429).json({
-        error: `Alpha Vantage rate limit reached. The free tier allows 25 requests per day and 5 per minute. Please wait a moment and try again.`,
-      });
+      return res.status(429).json({ error: "Alpha Vantage rate limit reached. Please wait and try again." });
     }
 
+    const timeSeries = data["Time Series (Daily)"];
     if (!timeSeries) {
-      console.error("Alpha Vantage Response missing Time Series:", data);
-      return res.status(500).json({ error: "Failed to fetch time series data. The symbol might be unsupported or API key is invalid." });
+      return res.status(500).json({ error: "Failed to fetch time series data." });
     }
 
     const dates = Object.keys(timeSeries).slice(0, 100);
@@ -277,15 +338,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const price1m = finalData.length >= 22 ? ((latestPriceVal - finalData[finalData.length - 22].close) / finalData[finalData.length - 22].close) * 100 : null;
 
     const aiAnalysis = await generateAIAnalysis(
-      cleanSymbol,
-      latestPriceVal,
-      price1d,
-      price5d,
-      price1m,
-      latestRSI,
-      arimaForecast,
-      prediction,
-      getCurrencySymbol(cleanSymbol)
+      cleanSymbol, latestPriceVal, price1d, price5d, price1m,
+      latestRSI, arimaForecast, prediction, getCurrencySymbol(cleanSymbol)
     );
 
     if (aiAnalysis) {
@@ -293,18 +347,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       prediction.explanation = aiAnalysis.reasoning;
     }
 
-    res.json({
+    return res.json({
       symbol: cleanSymbol,
       currencySymbol: getCurrencySymbol(cleanSymbol),
       data: finalData,
       latestPrice: latestPriceVal,
       previousPrice: previousPriceVal,
-      latestRSI: latestRSI,
+      latestRSI,
       arimaForecast,
       prediction,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching stock data:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
 }
