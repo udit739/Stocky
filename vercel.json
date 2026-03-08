@@ -1,13 +1,34 @@
 {
     "version": 2,
-    "rewrites": [
+    "builds": [
         {
-            "source": "/api/:path*",
-            "destination": "/server.ts"
+            "src": "api/**/*.ts",
+            "use": "@vercel/node"
         },
         {
-            "source": "/(.*)",
-            "destination": "/"
+            "src": "package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "buildCommand": "npm run build",
+                "outputDirectory": "dist"
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/stock-data",
+            "dest": "/api/stock-data.ts"
+        },
+        {
+            "src": "/api/symbol-search",
+            "dest": "/api/symbol-search.ts"
+        },
+        {
+            "handle": "filesystem"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
         }
     ]
 }
