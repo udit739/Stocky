@@ -188,12 +188,12 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
 
                 {/* Summary badge */}
                 <div
-                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${isUp
+                    className={`flex flex-wrap items-center gap-3 px-4 py-3 rounded-2xl border ${isUp
                         ? 'bg-violet-50 border-violet-100 text-violet-700'
                         : 'bg-rose-50 border-rose-100 text-rose-700'
                         }`}
                 >
-                    <div>
+                    <div className="shrink-0">
                         {isUp ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
                     </div>
                     <div>
@@ -202,7 +202,7 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
                     </div>
                     <div className="pl-3 border-l border-current/20">
                         <div className="text-xs font-bold uppercase tracking-widest opacity-60">Expected Δ</div>
-                        <div className="font-bold text-sm">
+                        <div className="font-bold text-sm whitespace-nowrap">
                             {changeAbs >= 0 ? '+' : ''}{changeAbs.toFixed(2)} ({changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%)
                         </div>
                     </div>

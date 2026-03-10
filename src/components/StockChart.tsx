@@ -327,15 +327,15 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
   return (
     <div className="w-full bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">
-          Price History {chartType === 'line' ? '& Moving Averages' : '— Candlestick'}
+          Price History {chartType === 'line' ? '& MAs' : '— Candle'}
         </h3>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* MA Legend (line mode only) */}
           {chartType === 'line' && (
-            <div className="flex gap-3 text-[10px] font-medium uppercase tracking-wider">
+            <div className="flex gap-2 text-[10px] font-medium uppercase tracking-wider">
               <span className="text-emerald-500">Price</span>
               <span className="text-amber-500">MA7</span>
               <span className="text-blue-500">MA20</span>
@@ -345,9 +345,9 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
 
           {/* Candle legend */}
           {chartType === 'candle' && (
-            <div className="flex gap-3 text-[10px] font-medium uppercase tracking-wider">
-              <span className="text-emerald-500">▲ Bullish</span>
-              <span className="text-red-500">▼ Bearish</span>
+            <div className="flex gap-2 text-[10px] font-medium uppercase tracking-wider">
+              <span className="text-emerald-500">▲ Bull</span>
+              <span className="text-red-500">▼ Bear</span>
             </div>
           )}
 

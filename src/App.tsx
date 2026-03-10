@@ -75,7 +75,7 @@ export default function App() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-50" />
       </div>
 
-      <div className="relative max-w-5xl mx-auto px-6 py-12 md:py-20">
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-20 overflow-x-hidden">
         {/* Header */}
         <header className="text-center mb-16">
           <motion.div

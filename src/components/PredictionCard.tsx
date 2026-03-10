@@ -138,21 +138,21 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
         </div>
 
         {/* Explanation */}
-        <div className="md:col-span-2 bg-white p-8 rounded-2xl border border-zinc-100 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-4">
+        <div className="md:col-span-2 bg-white p-5 sm:p-8 rounded-2xl border border-zinc-100 shadow-sm flex flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2 text-zinc-900">
               <AlertCircle size={20} className="text-emerald-500" />
               <h3 className="font-bold text-lg">AI Analysis</h3>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* ARIMA Badge */}
               {arimaTarget !== null && arimaChangePct !== null && (
                 <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${arimaIsUp ? 'bg-violet-100 text-violet-700' : 'bg-rose-100 text-rose-700'
                   }`}>
                   <FlaskConical size={12} />
-                  ARIMA 7d: {currencySymbol}{arimaTarget.toFixed(2)}
-                  <span className="opacity-70">({arimaChangePct >= 0 ? '+' : ''}{arimaChangePct.toFixed(2)}%)</span>
+                  <span className="whitespace-nowrap">ARIMA 7d: {currencySymbol}{arimaTarget.toFixed(2)}</span>
+                  <span className="opacity-70 whitespace-nowrap">({arimaChangePct >= 0 ? '+' : ''}{arimaChangePct.toFixed(2)}%)</span>
                 </div>
               )}
 
@@ -163,8 +163,8 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
                     'bg-zinc-100 text-zinc-700'
                   }`}>
                   <Activity size={12} />
-                  RSI: {latestRSI.toFixed(1)}
-                  {latestRSI >= 70 ? ' (Overbought)' : latestRSI <= 30 ? ' (Oversold)' : ' (Neutral)'}
+                  <span className="whitespace-nowrap">RSI: {latestRSI.toFixed(1)}
+                    {latestRSI >= 70 ? ' (OB)' : latestRSI <= 30 ? ' (OS)' : ''}</span>
                 </div>
               )}
             </div>

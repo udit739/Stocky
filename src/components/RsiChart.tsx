@@ -115,9 +115,9 @@ export const RsiChart: React.FC<RsiChartProps> = ({ data }) => {
 
     return (
         <div className="w-full h-[250px] bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm mt-4">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-black uppercase tracking-wider">Relative Strength Index (14)</h3>
-                <div className="flex gap-3 text-xs font-medium">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h3 className="text-sm font-semibold text-black uppercase tracking-wider">RSI (14)</h3>
+                <div className="flex gap-2 text-xs font-medium">
                     <span className="text-rose-500">70 (Overbought)</span>
                     <span className="text-emerald-500">30 (Oversold)</span>
                 </div>

@@ -108,13 +108,13 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data }) => {
     return (
         <div className="w-full bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
                     <BarChart2 size={16} className="text-blue-400" />
-                    <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">Volume Analysis</h3>
+                    <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">Volume</h3>
                 </div>
-                <div className="flex gap-3 text-[10px] font-bold uppercase tracking-wider">
-                    <span className="text-amber-500">⚡ Spike (&gt;2× avg)</span>
+                <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider">
+                    <span className="text-amber-500">⚡ Spike</span>
                     <span className="text-blue-400">Above Avg</span>
                     <span className="text-blue-200">Normal</span>
                     <span className="text-indigo-400">— 20d Avg</span>
@@ -132,18 +132,18 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data }) => {
                     <span className="text-lg font-black text-zinc-900">{formatVolume(Math.round(avg20))}</span>
                 </div>
                 <div className={`flex flex-col px-4 py-2 rounded-xl border flex-1 min-w-[130px] ${isHighVolume ? 'bg-amber-50 border-amber-100' :
-                        isLowVolume ? 'bg-blue-50 border-blue-100' :
-                            'bg-zinc-50 border-zinc-100'
+                    isLowVolume ? 'bg-blue-50 border-blue-100' :
+                        'bg-zinc-50 border-zinc-100'
                     }`}>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Volume Status</span>
-                    <div className={`flex items-center gap-1 text-sm font-black ${isHighVolume ? 'text-amber-600' :
-                            isLowVolume ? 'text-blue-600' :
-                                'text-zinc-900'
+                    <div className={`flex flex-wrap items-center gap-1 text-sm font-black ${isHighVolume ? 'text-amber-600' :
+                        isLowVolume ? 'text-blue-600' :
+                            'text-zinc-900'
                         }`}>
                         {isHighVolume ? <TrendingUp size={14} /> : isLowVolume ? <TrendingDown size={14} /> : null}
-                        {isHighVolume ? 'High Volume' : isLowVolume ? 'Low Volume' : 'Normal'}
-                        <span className="text-xs font-semibold ml-1 opacity-70">
-                            ({volumeVsAvg > 0 ? '+' : ''}{volumeVsAvg.toFixed(1)}% vs avg)
+                        <span>{isHighVolume ? 'High' : isLowVolume ? 'Low' : 'Normal'}</span>
+                        <span className="text-xs font-semibold opacity-70">
+                            ({volumeVsAvg > 0 ? '+' : ''}{volumeVsAvg.toFixed(1)}%)
                         </span>
                     </div>
                 </div>
