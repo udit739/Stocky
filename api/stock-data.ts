@@ -294,7 +294,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (data["Note"] || data["Information"]) {
-      return res.status(429).json({ error: "Alpha Vantage rate limit reached. Please wait and try again." });
+      const msg: string = data["Note"] || data["Information"] || "";
+      const isDaily = msg.toLowerCase().includes("25") || msg.toLowerCase().includes("daily");
+      const friendlyError = isDaily
+        ? "Alpha Vantage daily limit reached (25 requests/day on the free tier). Please come back tomorrow or upgrade your API key."
+        : "Alpha Vantage rate limit reached. The free tier allows 5 requests per minute — please wait 60 seconds and try again.";
+      return res.status(429).json({ error: friendlyError });
     }
 
     const timeSeries = data["Time Series (Daily)"];
