@@ -24,6 +24,14 @@
             "dest": "/api/symbol-search.ts"
         },
         {
+            "src": "/api/realtime-quote",
+            "dest": "/api/realtime-quote.ts"
+        },
+        {
+            "src": "/api/fundamentals",
+            "dest": "/api/fundamentals.ts"
+        },
+        {
             "handle": "filesystem"
         },
         {
