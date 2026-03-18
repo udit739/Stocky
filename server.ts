@@ -373,6 +373,114 @@ app.get("/api/stock-data", async (req, res) => {
   }
 });
 
+// ── 24h cache for AV OVERVIEW fundamentals ───────────────────────────────────
+const OVERVIEW_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const overviewCache = new Map<string, { data: any; ts: number }>();
+
+const safeNum = (v: string | undefined): number | null => {
+  if (!v || v === "None" || v === "-" || v.trim() === "") return null;
+  const n = parseFloat(v.replace(/[,$%]/g, "").trim());
+  return isNaN(n) ? null : n;
+};
+
+// ── Dedicated endpoint: AV OVERVIEW fundamentals (cached 24h) ────────────────
+app.get("/api/fundamentals", async (req, res) => {
+  const { symbol } = req.query;
+  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+  if (!symbol || typeof symbol !== "string") return res.status(400).json({ error: "Symbol required" });
+  if (!apiKey) return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY not configured" });
+
+  const sym = symbol.trim().toUpperCase();
+
+  // Serve from cache if fresh
+  const cached = overviewCache.get(sym);
+  if (cached && Date.now() - cached.ts < OVERVIEW_CACHE_TTL_MS) {
+    console.log(`[fundamentals] Cache HIT for ${sym}`);
+    return res.json(cached.data);
+  }
+
+  try {
+    console.log(`[fundamentals] Fetching OVERVIEW for ${sym}`);
+    const ovRes = await fetch(
+      `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${sym}&apikey=${apiKey}`
+    );
+    const ov: any = await ovRes.json();
+
+    if (ov["Note"] || ov["Information"]) {
+      console.warn(`[fundamentals] Rate-limited for ${sym}`);
+      // Return nulls — frontend shows N/A and caller can retry later
+      return res.json({ peRatio: null, forwardPE: null, divYield: null, marketCap: null, beta: null, eps: null, week52High: null, week52Low: null, sector: null, industry: null, rateLimited: true });
+    }
+
+    const payload = {
+      peRatio:    safeNum(ov["TrailingPE"]),
+      forwardPE:  safeNum(ov["ForwardPE"]),
+      divYield:   safeNum(ov["DividendYield"]),
+      marketCap:  safeNum(ov["MarketCapitalization"]),
+      beta:       safeNum(ov["Beta"]),
+      eps:        safeNum(ov["EPS"]),
+      week52High: safeNum(ov["52WeekHigh"]),
+      week52Low:  safeNum(ov["52WeekLow"]),
+      sector:     (ov["Sector"] && ov["Sector"] !== "None") ? ov["Sector"] : null,
+      industry:   (ov["Industry"] && ov["Industry"] !== "None") ? ov["Industry"] : null,
+    };
+
+    console.log(`[fundamentals] OK for ${sym}: PE=${payload.peRatio}, MCap=${payload.marketCap}, EPS=${payload.eps}`);
+    overviewCache.set(sym, { data: payload, ts: Date.now() });
+    res.json(payload);
+  } catch (err) {
+    console.error("[fundamentals] Error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── /api/realtime-quote — live price only (GLOBAL_QUOTE) ─────────────────────
+app.get("/api/realtime-quote", async (req, res) => {
+  const { symbol } = req.query;
+  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+  if (!symbol || typeof symbol !== "string") return res.status(400).json({ error: "Symbol is required" });
+  if (!apiKey) return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY is not configured" });
+
+  const cleanSymbol = symbol.trim().toUpperCase();
+  try {
+    console.log(`[realtime-quote] Fetching GLOBAL_QUOTE for: ${cleanSymbol}`);
+    const quoteRes = await fetch(
+      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${cleanSymbol}&apikey=${apiKey}`
+    );
+    const quoteData: any = await quoteRes.json();
+
+    if (quoteData["Note"] || quoteData["Information"]) {
+      return res.status(429).json({ error: "Alpha Vantage rate limit reached. Please wait a moment and try again." });
+    }
+
+    const q = quoteData["Global Quote"];
+    if (!q || !q["05. price"]) {
+      return res.status(404).json({ error: `No live quote available for "${cleanSymbol}".` });
+    }
+
+    const price  = parseFloat(q["05. price"]);
+    const volume = parseInt(q["06. volume"]);
+
+    res.json({
+      symbol:           q["01. symbol"] || cleanSymbol,
+      currencySymbol:   getCurrencySymbol(cleanSymbol),
+      price,
+      open:             parseFloat(q["02. open"]),
+      high:             parseFloat(q["03. high"]),
+      low:              parseFloat(q["04. low"]),
+      previousClose:    parseFloat(q["08. previous close"]),
+      change:           parseFloat(q["09. change"]),
+      changePercent:    q["10. change percent"]?.replace("%", "") ?? "0",
+      volume,
+      latestTradingDay: q["07. latest trading day"] || "",
+      liquidity:        price * volume,
+    });
+  } catch (error) {
+    console.error("Error fetching realtime quote:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Vite middleware for development
 if (process.env.NODE_ENV !== "production") {
   (async () => {

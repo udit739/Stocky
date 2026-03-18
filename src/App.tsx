@@ -7,6 +7,7 @@ import { VolumeChart } from './components/VolumeChart';
 import { ArimaChart } from './components/ArimaChart';
 import { PredictionCard } from './components/PredictionCard';
 import { CompareView } from './components/CompareView';
+import { RealTimeTicker } from './components/RealTimeTicker';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, BrainCircuit, Info, GitCompareArrows, BarChart2 } from 'lucide-react';
 
@@ -307,6 +308,10 @@ export default function App() {
               className="mt-12 space-y-8"
             >
               <div className="grid grid-cols-1 gap-8">
+                <RealTimeTicker
+                  symbol={stockData.symbol}
+                  currencySymbol={stockData.currencySymbol}
+                />
                 <PredictionCard
                   prediction={stockData.prediction}
                   symbol={stockData.symbol}
