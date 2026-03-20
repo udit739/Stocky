@@ -356,8 +356,8 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
             <button
               onClick={() => setChartType('line')}
               className={`px-3 py-1 transition-colors ${chartType === 'line'
-                  ? 'bg-zinc-900 text-white'
-                  : 'bg-white text-zinc-400 hover:text-zinc-700'
+                ? 'bg-zinc-900 text-white'
+                : 'bg-white text-zinc-400 hover:text-zinc-700'
                 }`}
             >
               Line
@@ -366,8 +366,8 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
               onClick={() => setChartType('candle')}
               disabled={!hasOHLC}
               className={`px-3 py-1 transition-colors ${chartType === 'candle'
-                  ? 'bg-zinc-900 text-white'
-                  : 'bg-white text-zinc-400 hover:text-zinc-700'
+                ? 'bg-zinc-900 text-white'
+                : 'bg-white text-zinc-400 hover:text-zinc-700'
                 } disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               Candle

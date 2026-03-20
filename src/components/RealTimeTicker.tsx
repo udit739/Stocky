@@ -96,9 +96,9 @@ const fmtVol = (v: number) =>
 
 const fmtMktCap = (v: number, cs: string) =>
   v >= 1e12 ? `${cs}${(v / 1e12).toFixed(2)}T`
-  : v >= 1e9 ? `${cs}${(v / 1e9).toFixed(2)}B`
-  : v >= 1e6 ? `${cs}${(v / 1e6).toFixed(2)}M`
-  : `${cs}${v.toFixed(0)}`;
+    : v >= 1e9 ? `${cs}${(v / 1e9).toFixed(2)}B`
+      : v >= 1e6 ? `${cs}${(v / 1e6).toFixed(2)}M`
+        : `${cs}${v.toFixed(0)}`;
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export const RealTimeTicker: React.FC<RealTimeTickerProps> = ({ symbol, currencySymbol }) => {
@@ -153,7 +153,7 @@ export const RealTimeTicker: React.FC<RealTimeTickerProps> = ({ symbol, currency
     countdownRef.current = setInterval(() => setCountdown(c => (c <= 1 ? REFRESH_INTERVAL : c - 1)), 1000);
     refreshRef.current = setInterval(fetchQuote, REFRESH_INTERVAL * 1000);
     return () => { clearInterval(countdownRef.current!); clearInterval(refreshRef.current!); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, fetchQuote]);
 
   useEffect(() => {
@@ -166,7 +166,7 @@ export const RealTimeTicker: React.FC<RealTimeTickerProps> = ({ symbol, currency
       countdownRef.current = setInterval(() => setCountdown(c => (c <= 1 ? REFRESH_INTERVAL : c - 1)), 1000);
       refreshRef.current = setInterval(fetchQuote, REFRESH_INTERVAL * 1000);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
   const isPositive = (quote?.change ?? 0) >= 0;

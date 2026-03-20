@@ -7,13 +7,19 @@
 }
 
 @layer base {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     box-sizing: border-box;
   }
-  html, body {
+
+  html,
+  body {
     overflow-x: hidden;
     width: 100%;
   }
+
   body {
     @apply bg-[#F8F9FA] text-zinc-900 antialiased font-sans;
   }
