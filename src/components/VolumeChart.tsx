@@ -36,11 +36,11 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data }) => {
     const isHighVolume = todayVolume > avg20 * 1.5;
     const isLowVolume = todayVolume < avg20 * 0.5;
 
-    // Color each bar: spike (>2× avg) = amber, high (>avg) = blue-400, normal = blue-200
+    // Color each bar: spike (>2× avg) = purple, high (>avg) = teal, normal = low cyan
     const barColors = volumes.map((v) => {
-        if (v > avg20 * 2) return 'rgba(251, 146, 60, 0.85)';   // amber spike
-        if (v > avg20 * 1.25) return 'rgba(96, 165, 250, 0.85)'; // blue-400 above avg
-        return 'rgba(147, 197, 253, 0.65)';                       // blue-200 normal
+        if (v > avg20 * 2) return 'rgba(172, 138, 255, 0.9)';   // Purple spike
+        if (v > avg20 * 1.25) return 'rgba(0, 238, 252, 0.85)'; // Teal above avg
+        return 'rgba(143, 245, 255, 0.3)';                       // Low cyan normal
     });
 
     const chartData = {
@@ -51,14 +51,14 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data }) => {
                 data: volumes,
                 backgroundColor: barColors,
                 borderWidth: 0,
-                borderRadius: 2,
+                borderRadius: 4,
             },
             {
                 // Average volume shown as a thin "line" by rendering a tiny translucent bar at avg level
                 label: 'Avg Volume (20d)',
                 data: volumes.map(() => avg20),
                 type: 'line' as const,
-                borderColor: 'rgba(99, 102, 241, 0.7)',
+                borderColor: 'rgba(255, 113, 108, 0.8)', // Neon red line
                 borderWidth: 1.5,
                 borderDash: [6, 4],
                 pointRadius: 0,
@@ -76,11 +76,13 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data }) => {
             tooltip: {
                 mode: 'index' as const,
                 intersect: false,
-                backgroundColor: '#18181b',
-                titleColor: '#ffffff',
+                backgroundColor: '#0e0e0e',
+                titleColor: '#8ff5ff',
                 bodyColor: '#ffffff',
+                borderColor: 'rgba(255,255,255,0.1)',
+                borderWidth: 1,
                 padding: 12,
-                cornerRadius: 8,
+                cornerRadius: 12,
                 callbacks: {
                     label: (ctx: any) => {
                         if (ctx.dataset.label === 'Volume') {
@@ -95,9 +97,10 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data }) => {
         scales: {
             x: { display: false },
             y: {
-                grid: { color: 'rgba(0,0,0,0.04)' },
+                grid: { color: 'rgba(255,255,255,0.05)' },
                 ticks: {
                     font: { size: 10 },
+                    color: '#a1a1aa',
                     callback: (v: any) => formatVolume(v),
                 },
             },
@@ -106,43 +109,45 @@ export const VolumeChart: React.FC<VolumeChartProps> = ({ data }) => {
     };
 
     return (
-        <div className="w-full bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm">
+        <div className="w-full bg-[#131313]/90 backdrop-blur-xl p-8 rounded-[28px] border border-white/5 shadow-2xl">
             {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                <div className="flex items-center gap-2">
-                    <BarChart2 size={16} className="text-blue-400" />
-                    <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">Volume</h3>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <BarChart2 size={24} className="text-[#8ff5ff]" />
+                    <h3 className="text-xl font-black text-white tracking-widest uppercase">Volume Optics</h3>
                 </div>
-                <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider">
-                    <span className="text-amber-500">⚡ Spike</span>
-                    <span className="text-blue-400">Above Avg</span>
-                    <span className="text-blue-200">Normal</span>
-                    <span className="text-indigo-400">— 20d Avg</span>
+                <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase tracking-widest">
+                    <span className="text-[#ac8aff]">⚡ Spike</span>
+                    <span className="text-[#00eefc]">Above Avg</span>
+                    <span className="text-[#8ff5ff]/70">Normal</span>
+                    <span className="text-[#ff716c]">— 20d Avg</span>
                 </div>
             </div>
 
             {/* Stats row */}
-            <div className="flex gap-3 mb-4 flex-wrap">
-                <div className="flex flex-col px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 flex-1 min-w-[130px]">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Today's Volume</span>
-                    <span className="text-lg font-black text-zinc-900">{formatVolume(todayVolume)}</span>
+            <div className="flex gap-4 mb-6 flex-wrap">
+                <div className="flex flex-col px-5 py-3 bg-white/5 rounded-2xl border border-white/10 flex-1 min-w-[130px]">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#8ff5ff]/80">Today's Volume</span>
+                    <span className="text-2xl font-black text-white drop-shadow-md">{formatVolume(todayVolume)}</span>
                 </div>
-                <div className="flex flex-col px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 flex-1 min-w-[130px]">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">20-Day Avg Volume</span>
-                    <span className="text-lg font-black text-zinc-900">{formatVolume(Math.round(avg20))}</span>
+                <div className="flex flex-col px-5 py-3 bg-white/5 rounded-2xl border border-white/10 flex-1 min-w-[130px]">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">20-Day Avg Volume</span>
+                    <span className="text-2xl font-black text-zinc-300 relative">
+                        {formatVolume(Math.round(avg20))}
+                    </span>
                 </div>
-                <div className={`flex flex-col px-4 py-2 rounded-xl border flex-1 min-w-[130px] ${isHighVolume ? 'bg-amber-50 border-amber-100' :
-                    isLowVolume ? 'bg-blue-50 border-blue-100' :
-                        'bg-zinc-50 border-zinc-100'
+                <div className={`flex flex-col px-5 py-3 rounded-2xl border flex-1 min-w-[130px] ${isHighVolume ? 'bg-[#00eefc]/10 border-[#00eefc]/20' :
+                    isLowVolume ? 'bg-[#ff716c]/10 border-[#ff716c]/20' :
+                        'bg-white/5 border-white/10'
                     }`}>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Volume Status</span>
-                    <div className={`flex flex-wrap items-center gap-1 text-sm font-black ${isHighVolume ? 'text-amber-600' :
-                        isLowVolume ? 'text-blue-600' :
-                            'text-zinc-900'
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Volume Velocity</span>
+                    <div className={`flex flex-wrap items-center gap-1.5 text-lg py-0.5 font-black uppercase tracking-widest ${isHighVolume ? 'text-[#00eefc] drop-shadow-[0_0_5px_rgba(0,238,252,0.4)]' :
+                        isLowVolume ? 'text-[#ff716c]' :
+                            'text-zinc-300'
                         }`}>
-                        {isHighVolume ? <TrendingUp size={14} /> : isLowVolume ? <TrendingDown size={14} /> : null}
-                        <span>{isHighVolume ? 'High' : isLowVolume ? 'Low' : 'Normal'}</span>
-                        <span className="text-xs font-semibold opacity-70">
+                        {isHighVolume ? <TrendingUp size={16} strokeWidth={3} /> : isLowVolume ? <TrendingDown size={16} strokeWidth={3} /> : null}
+                        <span>{isHighVolume ? 'Surging' : isLowVolume ? 'Lags' : 'Steady'}</span>
+                        <span className="text-[11px] font-bold opacity-70 ml-1 mt-1">
                             ({volumeVsAvg > 0 ? '+' : ''}{volumeVsAvg.toFixed(1)}%)
                         </span>
                     </div>

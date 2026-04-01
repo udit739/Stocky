@@ -62,30 +62,33 @@ const StatChip: React.FC<{
   sub?: string;
 }> = ({ label, value, accent, sub }) => {
   const colours: Record<string, string> = {
-    green: 'text-emerald-600', red: 'text-rose-500',
-    blue: 'text-blue-600', amber: 'text-amber-600', violet: 'text-violet-600',
+    green: 'text-[#8ff5ff] drop-shadow-[0_0_8px_rgba(143,245,255,0.4)]',
+    red: 'text-[#ff716c] drop-shadow-[0_0_8px_rgba(255,113,108,0.4)]',
+    blue: 'text-[#00eefc]',
+    amber: 'text-[#ac8aff]',
+    violet: 'text-[#ac8aff]',
   };
   return (
-    <div className="flex flex-col items-center justify-center bg-zinc-50 rounded-xl px-3 py-2.5 min-w-[88px] border border-zinc-100 gap-0.5">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</span>
-      <span className={`text-sm font-bold ${accent ? colours[accent] : 'text-zinc-800'}`}>{value}</span>
-      {sub && <span className="text-[9px] text-zinc-400 font-medium">{sub}</span>}
+    <div className="flex flex-col items-center justify-center bg-white/5 backdrop-blur-md rounded-2xl px-4 py-3 min-w-[96px] border border-white/5 gap-1">
+      <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</span>
+      <span className={`text-base font-black tracking-wider ${accent ? colours[accent] : 'text-zinc-200'}`}>{value}</span>
+      {sub && <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{sub}</span>}
     </div>
   );
 };
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1.5">{children}</p>
+  <p className="text-[10px] font-black uppercase tracking-widest text-[#ac8aff] mb-3">{children}</p>
 );
 
 const Shimmer: React.FC = () => (
   <div className="animate-pulse space-y-4 p-5">
-    <div className="h-9 w-44 bg-zinc-100 rounded-xl" />
+    <div className="h-9 w-44 bg-white/10 rounded-xl" />
     <div className="flex gap-3 flex-wrap">
-      {[...Array(6)].map((_, i) => <div key={i} className="h-14 w-24 bg-zinc-100 rounded-xl" />)}
+      {[...Array(6)].map((_, i) => <div key={i} className="h-16 w-24 bg-white/5 rounded-2xl" />)}
     </div>
     <div className="flex gap-3 flex-wrap">
-      {[...Array(4)].map((_, i) => <div key={i} className="h-14 w-24 bg-zinc-100 rounded-xl" />)}
+      {[...Array(4)].map((_, i) => <div key={i} className="h-16 w-24 bg-white/5 rounded-2xl" />)}
     </div>
   </div>
 );
@@ -182,20 +185,21 @@ export const RealTimeTicker: React.FC<RealTimeTickerProps> = ({ symbol, currency
   return (
     <div className="w-full">
       {/* ── Toggle Pill ── */}
+      {/* ── Toggle Pill ── */}
       <button
         onClick={() => setIsOpen(p => !p)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-sm border
+        className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-lg border backdrop-blur-md
           ${isOpen
-            ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-200'
-            : 'bg-white text-zinc-600 border-zinc-200 hover:border-emerald-300 hover:text-emerald-600'}`}
+            ? 'bg-gradient-to-r from-[#8ff5ff] to-[#00deec] text-[#005d63] border-transparent shadow-[0_0_20px_rgba(143,245,255,0.4)]'
+            : 'bg-[#1a1919]/80 text-[#8ff5ff] border-white/10 hover:border-[#8ff5ff]/50 hover:shadow-[0_0_15px_rgba(143,245,255,0.2)]'}`}
       >
         <span className="relative flex h-2.5 w-2.5">
           {isOpen && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60" />}
-          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOpen ? 'bg-white' : 'bg-emerald-500'}`} />
+          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOpen ? 'bg-white' : 'bg-[#8ff5ff]'}`} />
         </span>
-        <Radio size={14} />
-        Live Quote
-        {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        <Radio size={16} />
+        Live Optics
+        {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </button>
 
       {/* ── Panel ── */}
@@ -207,32 +211,32 @@ export const RealTimeTicker: React.FC<RealTimeTickerProps> = ({ symbol, currency
             animate={{ opacity: 1, height: 'auto', y: 0 }}
             exit={{ opacity: 0, height: 0, y: -8 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="overflow-hidden mt-3"
+            className="overflow-hidden mt-4"
           >
-            <div className="bg-white border border-zinc-100 rounded-2xl shadow-sm">
-              <div className={`h-1 rounded-t-2xl bg-gradient-to-r ${isPositive ? 'from-emerald-400 to-teal-400' : 'from-rose-400 to-red-400'}`} />
+            <div className="bg-[#131313]/90 backdrop-blur-2xl border border-white/5 rounded-[28px] shadow-2xl relative">
+              <div className={`absolute top-0 left-0 right-0 h-1.5 rounded-t-[28px] opacity-80 bg-gradient-to-r ${isPositive ? 'from-[#8ff5ff] to-[#00deec] shadow-[0_0_15px_rgba(143,245,255,0.8)]' : 'from-[#ff716c] to-[#d7383b] shadow-[0_0_15px_rgba(255,113,108,0.8)]'}`} />
 
               {loading && !quote ? (
                 <Shimmer />
               ) : error ? (
-                <div className="flex items-center gap-3 p-4 text-rose-500">
-                  <AlertCircle size={18} />
+                <div className="flex items-center gap-3 p-8 text-[#ff716c]">
+                  <AlertCircle size={20} />
                   <p className="text-sm font-medium">{error}</p>
                 </div>
               ) : quote ? (
-                <div className="p-4 sm:p-5 space-y-5">
+                <div className="p-6 sm:p-8 space-y-8">
 
                   {/* ── Sector / Industry badge ── */}
                   {(fundamentals?.sector || fundamentals?.industry) && (
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-3">
                       {fundamentals.sector && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-50 border border-violet-100 text-violet-700 text-xs font-bold">
-                          <Building2 size={11} />
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#ac8aff]/10 border border-[#ac8aff]/20 text-[#ac8aff] text-xs font-black uppercase tracking-widest">
+                          <Building2 size={14} />
                           {fundamentals.sector}
                         </span>
                       )}
                       {fundamentals.industry && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-semibold">
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-300 text-xs font-bold uppercase tracking-widest">
                           {fundamentals.industry}
                         </span>
                       )}
@@ -241,31 +245,31 @@ export const RealTimeTicker: React.FC<RealTimeTickerProps> = ({ symbol, currency
 
 
                   {/* ── Price Row ── */}
-                  <div className="flex flex-wrap items-end justify-between gap-3">
-                    <div className="flex items-end gap-3">
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="flex items-end gap-4">
                       <motion.span
                         key={quote.price}
                         initial={{ opacity: 0.5, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-3xl font-black text-zinc-900 tracking-tight leading-none"
+                        className="text-5xl font-black text-white tracking-tighter leading-none drop-shadow-lg"
                       >
                         {fmtP(quote.price)}
                       </motion.span>
-                      <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-bold
-                        ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                        {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold tracking-wider
+                        ${isPositive ? 'bg-[#8ff5ff]/10 text-[#8ff5ff]' : 'bg-[#ff716c]/10 text-[#ff716c]'}`}>
+                        {isPositive ? <TrendingUp size={16} strokeWidth={3} /> : <TrendingDown size={16} strokeWidth={3} />}
                         {isPositive ? '+' : ''}{fmtP(quote.change)}&nbsp;({isPositive ? '+' : ''}{changePct}%)
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {lastUpdated && (
-                        <span className="text-[10px] text-zinc-400 font-medium hidden sm:block">
-                          Updated {lastUpdated.toLocaleTimeString()}
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest hidden sm:block">
+                          SYNC {lastUpdated.toLocaleTimeString()}
                         </span>
                       )}
                       <button onClick={fetchQuote} disabled={loading} title="Refresh now"
-                        className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors disabled:opacity-40">
-                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                        className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40">
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                       </button>
                       <div className="relative flex items-center justify-center w-9 h-9">
                         <CountdownRing seconds={countdown} total={REFRESH_INTERVAL} />
@@ -350,12 +354,12 @@ export const RealTimeTicker: React.FC<RealTimeTickerProps> = ({ symbol, currency
 
                   {/* ── 52-Week Range ── */}
                   {fundamentals && fundamentals.week52High !== null && fundamentals.week52Low !== null && (
-                    <div>
+                    <div className="pt-2">
                       <SectionLabel>52-Week Range</SectionLabel>
-                      <div className="flex flex-wrap gap-2 items-center">
+                      <div className="flex flex-wrap gap-4 items-center">
                         <StatChip label="52W Low" value={fmtP(fundamentals.week52Low!)} accent="red" />
                         <div className="flex-1 min-w-[120px] px-2">
-                          <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                          <div className="h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{
@@ -364,11 +368,11 @@ export const RealTimeTicker: React.FC<RealTimeTickerProps> = ({ symbol, currency
                                 ))}%`
                               }}
                               transition={{ duration: 0.8, ease: 'easeOut' }}
-                              className="h-full rounded-full bg-gradient-to-r from-rose-400 via-amber-400 to-emerald-500"
+                              className="h-full rounded-full bg-gradient-to-r from-[#ff716c] via-[#ac8aff] to-[#8ff5ff] shadow-[0_0_10px_rgba(143,245,255,0.5)]"
                             />
                           </div>
-                          <p className="text-[10px] text-zinc-400 text-center mt-1 font-medium">
-                            Current price in 52-week range
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-widest text-center mt-2 font-bold">
+                            Current position
                           </p>
                         </div>
                         <StatChip label="52W High" value={fmtP(fundamentals.week52High!)} accent="green" />

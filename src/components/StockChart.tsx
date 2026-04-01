@@ -109,19 +109,19 @@ const CandleChart: React.FC<CandleChartProps> = ({ data, currencySymbol }) => {
       for (let i = 0; i <= yTicks; i++) {
         const price = priceMin + (priceRange * i) / yTicks;
         const y = toY(price);
-        ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(PAD_L, y);
         ctx.lineTo(W - PAD_R, y);
         ctx.stroke();
-        ctx.fillStyle = '#71717a';
+        ctx.fillStyle = '#a1a1aa';
         ctx.fillText(`${currencySymbol}${price.toFixed(2)}`, PAD_L - 4, y + 3.5);
       }
 
       // X-axis labels (every ~15 candles)
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#71717a';
+      ctx.fillStyle = '#a1a1aa';
       const labelInterval = Math.max(1, Math.floor(n / 6));
       for (let i = 0; i < n; i += labelInterval) {
         const x = startX + i * stepX + candleW / 2;
@@ -146,7 +146,7 @@ const CandleChart: React.FC<CandleChartProps> = ({ data, currencySymbol }) => {
         const wickX = x + candleW / 2;
 
         // Wick
-        ctx.strokeStyle = bullish ? '#10b981' : '#ef4444';
+        ctx.strokeStyle = bullish ? '#8ff5ff' : '#ff716c';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(wickX, toY(high));
@@ -154,12 +154,12 @@ const CandleChart: React.FC<CandleChartProps> = ({ data, currencySymbol }) => {
         ctx.stroke();
 
         // Body
-        ctx.fillStyle = bullish ? '#10b981' : '#ef4444';
+        ctx.fillStyle = bullish ? '#8ff5ff' : '#ff716c';
         ctx.fillRect(x, bodyTop, candleW, bodyH);
 
         // Hollow body for bullish (optional modern look)
         if (bullish && bodyH > 3) {
-          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.fillStyle = 'rgba(14,14,14,0.6)';
           ctx.fillRect(x + 1, bodyTop + 1, candleW - 2, bodyH - 2);
         }
 
@@ -209,17 +209,17 @@ const CandleChart: React.FC<CandleChartProps> = ({ data, currencySymbol }) => {
       />
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-10 bg-zinc-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-zinc-700 min-w-[130px]"
+          className="pointer-events-none absolute z-10 bg-[#0e0e0e]/95 text-white text-[11px] rounded-xl px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] border border-white/10 backdrop-blur-md min-w-[140px]"
           style={{
             left: tooltip.x + 14,
             top: Math.max(8, tooltip.y - 60),
           }}
         >
-          <p className="font-semibold text-zinc-300 mb-1">{tooltip.date}</p>
-          <p><span className="text-zinc-400">O</span> {currencySymbol}{tooltip.open.toFixed(2)}</p>
-          <p><span className="text-zinc-400">H</span> {currencySymbol}{tooltip.high.toFixed(2)}</p>
-          <p><span className="text-zinc-400">L</span> {currencySymbol}{tooltip.low.toFixed(2)}</p>
-          <p><span className="text-zinc-400">C</span> {currencySymbol}{tooltip.close.toFixed(2)}</p>
+          <p className="font-bold text-[#8ff5ff] mb-2 uppercase tracking-wider">{tooltip.date}</p>
+          <p><span className="text-zinc-500 font-bold inline-block w-4">O</span> {currencySymbol}{tooltip.open.toFixed(2)}</p>
+          <p><span className="text-zinc-500 font-bold inline-block w-4">H</span> {currencySymbol}{tooltip.high.toFixed(2)}</p>
+          <p><span className="text-zinc-500 font-bold inline-block w-4">L</span> {currencySymbol}{tooltip.low.toFixed(2)}</p>
+          <p><span className="text-zinc-500 font-bold inline-block w-4">C</span> {currencySymbol}{tooltip.close.toFixed(2)}</p>
         </div>
       )}
     </div>
@@ -238,8 +238,8 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
       {
         label: `${symbol} Closing Price`,
         data: data.map((d) => d.close),
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderColor: '#8ff5ff',
+        backgroundColor: 'rgba(143, 245, 255, 0.05)',
         borderWidth: 2,
         pointRadius: 0,
         pointHoverRadius: 4,
@@ -250,7 +250,7 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
       {
         label: `MA (7)`,
         data: data.map((d) => d.ma7),
-        borderColor: '#f59e0b',
+        borderColor: '#00eefc',
         borderWidth: 1.5,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -262,7 +262,7 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
       {
         label: `MA (20)`,
         data: data.map((d) => d.ma20),
-        borderColor: '#3b82f6',
+        borderColor: '#ac8aff',
         borderWidth: 1.5,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -274,7 +274,7 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
       {
         label: `MA (50)`,
         data: data.map((d) => d.ma50),
-        borderColor: '#8b5cf6',
+        borderColor: '#5516be',
         borderWidth: 1.5,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -294,11 +294,13 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
       tooltip: {
         mode: 'index' as const,
         intersect: false,
-        backgroundColor: '#18181b',
-        titleColor: '#ffffff',
+        backgroundColor: '#0e0e0e',
+        titleColor: '#8ff5ff',
         bodyColor: '#ffffff',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
         padding: 12,
-        cornerRadius: 8,
+        cornerRadius: 12,
         callbacks: {
           label: (context: any) => {
             let label = context.dataset.label || '';
@@ -314,9 +316,10 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
     scales: {
       x: { display: false },
       y: {
-        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
         ticks: {
           font: { size: 10 },
+          color: '#a1a1aa',
           callback: (value: any) => `${currencySymbol}${value}`,
         },
       },
@@ -325,39 +328,39 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
   };
 
   return (
-    <div className="w-full bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm">
+    <div className="w-full bg-[#131313]/90 backdrop-blur-xl p-6 sm:p-8 rounded-[28px] border border-white/5 shadow-2xl">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h3 className="text-sm font-black text-white uppercase tracking-widest">
           Price History {chartType === 'line' ? '& MAs' : '— Candle'}
         </h3>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           {/* MA Legend (line mode only) */}
           {chartType === 'line' && (
-            <div className="flex gap-2 text-[10px] font-medium uppercase tracking-wider">
-              <span className="text-emerald-500">Price</span>
-              <span className="text-amber-500">MA7</span>
-              <span className="text-blue-500">MA20</span>
-              <span className="text-violet-500">MA50</span>
+            <div className="flex gap-3 text-[10px] font-black uppercase tracking-widest">
+              <span className="text-[#8ff5ff]">Price</span>
+              <span className="text-[#00eefc]">MA7</span>
+              <span className="text-[#ac8aff]">MA20</span>
+              <span className="text-[#5516be]">MA50</span>
             </div>
           )}
 
           {/* Candle legend */}
           {chartType === 'candle' && (
-            <div className="flex gap-2 text-[10px] font-medium uppercase tracking-wider">
-              <span className="text-emerald-500">▲ Bull</span>
-              <span className="text-red-500">▼ Bear</span>
+            <div className="flex gap-3 text-[10px] font-black uppercase tracking-widest">
+              <span className="text-[#8ff5ff]">▲ Bull</span>
+              <span className="text-[#ff716c]">▼ Bear</span>
             </div>
           )}
 
           {/* Toggle buttons */}
-          <div className="flex rounded-lg overflow-hidden border border-zinc-200 text-[11px] font-semibold">
+          <div className="flex rounded-full overflow-hidden border border-white/10 text-[10px] font-black uppercase tracking-widest bg-white/5 p-1">
             <button
               onClick={() => setChartType('line')}
-              className={`px-3 py-1 transition-colors ${chartType === 'line'
-                ? 'bg-zinc-900 text-white'
-                : 'bg-white text-zinc-400 hover:text-zinc-700'
+              className={`px-4 py-1.5 rounded-full transition-colors ${chartType === 'line'
+                ? 'bg-gradient-to-r from-[#8ff5ff] to-[#00deec] text-[#005d63]'
+                : 'text-zinc-400 hover:text-white'
                 }`}
             >
               Line
@@ -365,9 +368,9 @@ export const StockChart: React.FC<StockChartProps> = ({ data, symbol, currencySy
             <button
               onClick={() => setChartType('candle')}
               disabled={!hasOHLC}
-              className={`px-3 py-1 transition-colors ${chartType === 'candle'
-                ? 'bg-zinc-900 text-white'
-                : 'bg-white text-zinc-400 hover:text-zinc-700'
+              className={`px-4 py-1.5 rounded-full transition-colors ${chartType === 'candle'
+                ? 'bg-gradient-to-r from-[#ac8aff] to-[#8455ef] text-[#280067]'
+                : 'text-zinc-400 hover:text-white'
                 } disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               Candle

@@ -98,8 +98,8 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
             {
                 label: 'Historical',
                 data: historyPricesPadded,
-                borderColor: '#94a3b8',
-                backgroundColor: 'rgba(148,163,184,0.08)',
+                borderColor: '#71717a',
+                backgroundColor: 'rgba(113,113,122,0.08)',
                 borderWidth: 2,
                 pointRadius: 0,
                 pointHoverRadius: 4,
@@ -109,15 +109,15 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
             {
                 label: 'ARIMA Forecast',
                 data: forecastPricesPadded,
-                borderColor: isUp ? '#8b5cf6' : '#f43f5e',
+                borderColor: isUp ? '#8ff5ff' : '#ff716c',
                 backgroundColor: isUp
-                    ? 'rgba(139,92,246,0.12)'
-                    : 'rgba(244,63,94,0.12)',
+                    ? 'rgba(143,245,255,0.12)'
+                    : 'rgba(255,113,108,0.12)',
                 borderWidth: 2.5,
                 borderDash: [6, 4],
                 pointRadius: (ctx: any) => (ctx.dataIndex >= allLabels.length - arimaForecast.length ? 3 : 0),
                 pointHoverRadius: 5,
-                pointBackgroundColor: isUp ? '#8b5cf6' : '#f43f5e',
+                pointBackgroundColor: isUp ? '#8ff5ff' : '#ff716c',
                 tension: 0.35,
                 fill: true,
             },
@@ -131,12 +131,13 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: 'rgba(15,23,42,0.9)',
-                titleColor: '#e2e8f0',
-                bodyColor: '#cbd5e1',
-                borderColor: 'rgba(255,255,255,0.08)',
+                backgroundColor: '#0e0e0e',
+                titleColor: '#ac8aff',
+                bodyColor: '#ffffff',
+                borderColor: 'rgba(255,255,255,0.1)',
                 borderWidth: 1,
                 padding: 12,
+                cornerRadius: 12,
                 callbacks: {
                     label: (ctx: any) => {
                         if (ctx.parsed.y === null) return '';
@@ -147,9 +148,9 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
         },
         scales: {
             x: {
-                grid: { color: 'rgba(0,0,0,0.04)' },
+                grid: { color: 'rgba(255,255,255,0.05)' },
                 ticks: {
-                    color: '#94a3b8',
+                    color: '#a1a1aa',
                     maxRotation: 0,
                     maxTicksLimit: 8,
                     font: { size: 11 },
@@ -157,9 +158,9 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
             },
             y: {
                 position: 'right' as const,
-                grid: { color: 'rgba(0,0,0,0.04)' },
+                grid: { color: 'rgba(255,255,255,0.05)' },
                 ticks: {
-                    color: '#94a3b8',
+                    color: '#a1a1aa',
                     font: { size: 11 },
                     callback: (v: number) => `${currencySymbol}${v.toFixed(0)}`,
                 },
@@ -172,37 +173,37 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6"
+            className="bg-[#131313]/90 backdrop-blur-xl rounded-[28px] border border-white/5 shadow-2xl p-8"
         >
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-violet-50">
-                        <FlaskConical size={20} className="text-violet-600" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-[#ac8aff]/10 border border-[#ac8aff]/20">
+                        <FlaskConical size={24} className="text-[#ac8aff]" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-zinc-900 text-lg leading-tight">ARIMA Forecast</h3>
-                        <p className="text-xs text-zinc-400 font-medium">Statistical model · 7-day outlook for {symbol}</p>
+                        <h3 className="font-black text-white text-xl uppercase tracking-widest leading-tight">ARIMA Forecast</h3>
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1.5">Statistical model · 7-day outlook for {symbol}</p>
                     </div>
                 </div>
 
                 {/* Summary badge */}
                 <div
-                    className={`flex flex-wrap items-center gap-3 px-4 py-3 rounded-2xl border ${isUp
-                        ? 'bg-violet-50 border-violet-100 text-violet-700'
-                        : 'bg-rose-50 border-rose-100 text-rose-700'
+                    className={`flex flex-wrap items-center gap-4 px-5 py-3.5 rounded-2xl border backdrop-blur-md shadow-lg ${isUp
+                        ? 'bg-[#8ff5ff]/10 border-[#8ff5ff]/20 text-[#8ff5ff]'
+                        : 'bg-[#ff716c]/10 border-[#ff716c]/20 text-[#ff716c]'
                         }`}
                 >
                     <div className="shrink-0">
-                        {isUp ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+                        {isUp ? <TrendingUp size={24} strokeWidth={3} /> : <TrendingDown size={24} strokeWidth={3} />}
                     </div>
                     <div>
-                        <div className="text-xs font-bold uppercase tracking-widest opacity-60">7-Day Target</div>
-                        <div className="font-black text-xl">{currencySymbol}{endForecast.toFixed(2)}</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest opacity-70">7-Day Target</div>
+                        <div className="font-black text-2xl tracking-tight">{currencySymbol}{endForecast.toFixed(2)}</div>
                     </div>
-                    <div className="pl-3 border-l border-current/20">
-                        <div className="text-xs font-bold uppercase tracking-widest opacity-60">Expected Δ</div>
-                        <div className="font-bold text-sm whitespace-nowrap">
+                    <div className="pl-4 border-l border-white/10">
+                        <div className="text-[10px] font-black uppercase tracking-widest opacity-70">Expected Δ</div>
+                        <div className="font-black text-sm whitespace-nowrap tracking-wider">
                             {changeAbs >= 0 ? '+' : ''}{changeAbs.toFixed(2)} ({changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%)
                         </div>
                     </div>
@@ -210,20 +211,20 @@ export const ArimaChart: React.FC<ArimaChartProps> = ({ data, arimaForecast, sym
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-5 mb-4">
-                <div className="flex items-center gap-1.5">
-                    <span className="inline-block w-6 h-0.5 bg-slate-400 rounded" />
-                    <span className="text-xs text-zinc-500 font-medium">Historical (30d)</span>
+            <div className="flex flex-wrap items-center gap-6 mb-6">
+                <div className="flex items-center gap-2">
+                    <span className="inline-block w-6 h-1 bg-[#71717a] rounded-sm" />
+                    <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Historical (30d)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                     <span
-                        className="inline-block w-6 h-0.5 rounded"
+                        className="inline-block w-8 h-1 rounded-sm"
                         style={{
-                            background: isUp ? '#8b5cf6' : '#f43f5e',
-                            backgroundImage: `repeating-linear-gradient(90deg, ${isUp ? '#8b5cf6' : '#f43f5e'} 0 6px, transparent 6px 10px)`,
+                            background: isUp ? '#8ff5ff' : '#ff716c',
+                            backgroundImage: `repeating-linear-gradient(90deg, ${isUp ? '#8ff5ff' : '#ff716c'} 0 6px, transparent 6px 10px)`,
                         }}
                     />
-                    <span className="text-xs text-zinc-500 font-medium">ARIMA Forecast (7d)</span>
+                    <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">ARIMA Forecast (7d)</span>
                 </div>
             </div>
 

@@ -23,31 +23,33 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading, value
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto mb-8">
-      <div className="relative group">
-        <input
-          type="text"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-          placeholder="Enter stock symbol (e.g AAPL, MSFT)"
-          className="w-full px-5 py-3 bg-white border border-zinc-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-black/20 focus:border-black transition-all text-zinc-800 placeholder:text-zinc-400"
-          disabled={isLoading}
-        />
+    <form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto mb-8 relative z-20">
+      <div className="relative group flex p-1.5 bg-[#1a1919]/80 backdrop-blur-xl rounded-[28px] border border-white/5 shadow-2xl">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value)}
+            placeholder="ENTER Ticker "
+            className="w-full px-6 py-4 bg-[#0e0e0e] border border-white/5 rounded-2xl shadow-inner focus:outline-none focus:ring-1 focus:ring-[#8ff5ff] transition-all text-white placeholder:text-zinc-600 font-bold tracking-wider uppercase"
+            disabled={isLoading}
+          />
+        </div>
         <button
           type="submit"
           disabled={isLoading || !symbol.trim()}
-          className="absolute right-2 top-2 bottom-2 px-6 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 disabled:opacity-100 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="ml-2 px-8 bg-gradient-to-br from-[#8ff5ff] to-[#00deec] text-[#005d63] rounded-2xl font-bold tracking-wide hover:shadow-[0_0_20px_rgba(143,245,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 uppercase"
         >
           {isLoading ? (
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-[#005d63]/30 border-t-[#005d63] rounded-full animate-spin" />
           ) : (
-            <Search size={18} />
+            <Search size={18} strokeWidth={3} />
           )}
           <span>Predict</span>
         </button>
       </div>
-      <p className="mt-2 text-center text-xs text-white font-semibold">
-        Try symbols like <span className="text-white">AAPL</span>, <span className="text-white">TSLA</span>
+      <p className="mt-4 text-center text-xs text-zinc-500 font-medium tracking-wide">
+        Try <span className="text-[#8ff5ff] font-bold">NVDA</span>, <span className="text-[#ac8aff] font-bold">TSLA</span>
       </p>
     </form>
   );

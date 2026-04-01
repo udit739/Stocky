@@ -8,7 +8,8 @@ import { ArimaChart } from './components/ArimaChart';
 import { PredictionCard } from './components/PredictionCard';
 import { CompareView } from './components/CompareView';
 import { RealTimeTicker } from './components/RealTimeTicker';
-import { motion, AnimatePresence } from 'motion/react';
+import { CurrencyBackground } from './components/CurrencyBackground';
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { LineChart, BrainCircuit, Info, GitCompareArrows, BarChart2 } from 'lucide-react';
 
 interface PredictionResult {
@@ -79,32 +80,32 @@ function CompareSearchBar({ onCompare, isLoading }: CompareSearchBarProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto mb-8">
-      <div className="flex flex-col sm:flex-row gap-3">
+    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto mb-8 relative z-20">
+      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-[#1a1919]/80 backdrop-blur-xl rounded-3xl border border-white/5 shadow-2xl">
         <div className="relative flex-1 group">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-400 uppercase tracking-widest pointer-events-none">A</span>
+          <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#8ff5ff] uppercase tracking-widest pointer-events-none drop-shadow-[0_0_8px_rgba(143,245,255,0.5)]">A</span>
           <input
             type="text"
             value={symA}
             onChange={e => setSymA(e.target.value)}
             placeholder="AAPL"
-            className="w-full pl-8 pr-4 py-3 bg-white border-2 border-indigo-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all text-zinc-800 placeholder:text-zinc-400 text-center font-bold tracking-wider uppercase"
+            className="w-full pl-10 pr-4 py-3.5 bg-[#0e0e0e] border border-white/10 rounded-2xl shadow-inner focus:outline-none focus:ring-1 focus:ring-[#8ff5ff] focus:border-[#8ff5ff] transition-all text-white placeholder:text-zinc-600 text-center font-bold tracking-wider uppercase"
             disabled={isLoading}
           />
         </div>
 
         <div className="hidden sm:flex items-center justify-center">
-          <span className="text-zinc-400 font-bold text-lg">vs</span>
+          <span className="text-zinc-500 font-bold text-lg rotate-12">VS</span>
         </div>
 
         <div className="relative flex-1 group">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 uppercase tracking-widest pointer-events-none">B</span>
+          <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#ac8aff] uppercase tracking-widest pointer-events-none drop-shadow-[0_0_8px_rgba(172,138,255,0.5)]">B</span>
           <input
             type="text"
             value={symB}
             onChange={e => setSymB(e.target.value)}
             placeholder="MSFT"
-            className="w-full pl-8 pr-4 py-3 bg-white border-2 border-amber-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition-all text-zinc-800 placeholder:text-zinc-400 text-center font-bold tracking-wider uppercase"
+            className="w-full pl-10 pr-4 py-3.5 bg-[#0e0e0e] border border-white/10 rounded-2xl shadow-inner focus:outline-none focus:ring-1 focus:ring-[#ac8aff] focus:border-[#ac8aff] transition-all text-white placeholder:text-zinc-600 text-center font-bold tracking-wider uppercase"
             disabled={isLoading}
           />
         </div>
@@ -112,18 +113,18 @@ function CompareSearchBar({ onCompare, isLoading }: CompareSearchBarProps) {
         <button
           type="submit"
           disabled={isLoading || !symA.trim() || !symB.trim()}
-          className="sm:w-auto w-full px-6 py-3 bg-zinc-900 text-white rounded-2xl font-semibold hover:bg-zinc-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+          className="sm:w-auto w-full px-8 py-3.5 bg-gradient-to-br from-[#8ff5ff] to-[#00deec] text-[#005d63] rounded-2xl font-bold tracking-wide hover:shadow-[0_0_20px_rgba(143,245,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 whitespace-nowrap"
         >
           {isLoading ? (
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-[#005d63]/30 border-t-[#005d63] rounded-full animate-spin" />
           ) : (
-            <GitCompareArrows size={18} />
+            <GitCompareArrows size={18} strokeWidth={2.5} />
           )}
-          <span>Compare</span>
+          <span>COMPARE</span>
         </button>
       </div>
-      <p className="mt-2 text-center text-xs text-white font-semibold">
-        Try <span className="text-white">AAPL</span> vs <span className="text-white">MSFT</span>, or <span className="text-white">RELIANCE.BSE</span> vs <span className="text-white">TCS.BSE</span>
+      <p className="mt-4 text-center text-xs text-zinc-500 font-medium tracking-wide">
+        Try <span className="text-[#8ff5ff] font-bold">AAPL</span> vs <span className="text-[#ac8aff] font-bold">MSFT</span>
       </p>
     </form>
   );
@@ -139,6 +140,12 @@ export default function App() {
   const [errorSingle, setErrorSingle] = useState<string | null>(null);
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [activeSymbol, setActiveSymbol] = useState('');
+
+  // ── Scroll Parallax ──
+  const { scrollY } = useScroll();
+  const y1 = useTransform(scrollY, [0, 1000], [0, 200]);
+  const y2 = useTransform(scrollY, [0, 1000], [0, -150]);
+  const opacityHeader = useTransform(scrollY, [0, 300], [1, 0]);
 
   // ── Compare mode state ──
   const [isLoadingCompare, setIsLoadingCompare] = useState(false);
@@ -197,68 +204,73 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#64748b] text-zinc-900 font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-[#0e0e0e] text-zinc-300 font-sans selection:bg-[#00eefc]/30 selection:text-[#00eefc]">
+      {/* Floating currency symbols background */}
+      <CurrencyBackground />
+
       {/* Background Decor */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-50 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-50" />
+      <div className="fixed inset-0 overflow-hidden pointer-events-none perspective-[1000px]">
+        <motion.div style={{ y: y1 }} className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#8ff5ff] rounded-full blur-[160px] opacity-10" />
+        <motion.div style={{ y: y2 }} className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#ac8aff] rounded-full blur-[160px] opacity-10" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
       </div>
 
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-20 overflow-x-hidden">
         {/* Header */}
-        <header className="text-center mb-10">
+        <motion.header style={{ opacity: opacityHeader }} className="text-center mb-10">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-50 border border-purple-900 text-teal-600 text-xs font-bold uppercase tracking-widest mb-6"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-[#8ff5ff] text-xs font-bold uppercase tracking-widest mb-6 shadow-[0_0_15px_rgba(143,245,255,0.15)]"
           >
             <BrainCircuit size={14} />
-            Stateless AI Predictor
+            Neural Market Prediction
           </motion.div>
           <motion.h1
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-5xl md:text-6xl font-black tracking-tight text-zinc-900 mb-6"
+            initial={{ opacity: 0, y: -10, rotateX: -10 }}
+            animate={{ opacity: 1, y: 0, rotateX: 0 }}
+            transition={{ delay: 0.1, type: 'spring', damping: 20 }}
+            className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-6 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            <span className="text-zinc-800">Stock</span><span className="text-purple-600">y</span>
+            STOCK<span className="text-transparent bg-clip-text bg-gradient-to-br from-[#8ff5ff] to-[#00deec]">Y</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 3, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-black text-lg max-w-xl mx-auto font-medium italic"
+            className="text-zinc-400 text-lg max-w-xl mx-auto font-medium"
           >
-            Enter a ticker symbol to get real-time historical analysis and AI-driven short-term predictions.
+            Enter a ticker symbol to access real-time optics and deep neural predictions.
           </motion.p>
-        </header>
+        </motion.header>
 
         {/* ── Mode Switcher ── */}
         <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: -8, zZ: -50 }}
+          animate={{ opacity: 1, y: 0, zIndex: 10 }}
           transition={{ delay: 0.25 }}
-          className="flex justify-center mb-8"
+          className="flex justify-center mb-12 relative z-20"
         >
-          <div className="inline-flex items-center bg-white rounded-2xl border border-zinc-200 shadow-sm p-1 gap-1">
+          <div className="inline-flex items-center bg-[#131313]/80 backdrop-blur-xl rounded-2xl border border-white/5 shadow-2xl p-1.5 gap-1 ring-1 ring-white/5">
             <button
               onClick={() => switchMode('single')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${mode === 'single'
-                ? 'bg-zinc-900 text-white shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-800'
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${mode === 'single'
+                ? 'bg-gradient-to-br from-[#1a1919] to-[#262626] text-[#8ff5ff] shadow-[0_0_20px_rgba(143,245,255,0.1)] border border-[#8ff5ff]/20'
+                : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
                 }`}
             >
-              <BarChart2 size={15} />
-              Single Stock
+              <BarChart2 size={16} className={mode === 'single' ? 'drop-shadow-[0_0_8px_rgba(143,245,255,0.6)]' : ''} />
+              Single Asset
             </button>
             <button
               onClick={() => switchMode('compare')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${mode === 'compare'
-                ? 'bg-zinc-900 text-white shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-800'
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${mode === 'compare'
+                ? 'bg-gradient-to-br from-[#1a1919] to-[#262626] text-[#ac8aff] shadow-[0_0_20px_rgba(172,138,255,0.1)] border border-[#ac8aff]/20'
+                : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
                 }`}
             >
-              <GitCompareArrows size={15} />
+              <GitCompareArrows size={16} className={mode === 'compare' ? 'drop-shadow-[0_0_8px_rgba(172,138,255,0.6)]' : ''} />
               Compare
             </button>
           </div>
@@ -375,7 +387,7 @@ export default function App() {
               <div className="w-20 h-20 bg-white rounded-3xl border border-zinc-100 shadow-sm flex items-center justify-center mx-auto text-zinc-300">
                 <LineChart size={40} />
               </div>
-              <p className="text-black font-semibold">Waiting for your first symbol...</p>
+              <p className="text-black font-semibold">Enter a ticker symbol above to get started.</p>
             </motion.div>
           )}
 
@@ -386,9 +398,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               className="mt-20 text-center space-y-6"
             >
-              <div className="w-20 h-20 bg-white rounded-3xl border border-zinc-100 shadow-sm flex items-center justify-center mx-auto text-zinc-400">
-                <GitCompareArrows size={40} />
-              </div>
+
               <p className="text-black font-semibold">Enter two ticker symbols above to compare them.</p>
             </motion.div>
           )}

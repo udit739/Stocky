@@ -21,6 +21,29 @@
   }
 
   body {
-    @apply bg-[#F8F9FA] text-zinc-900 antialiased font-sans;
+    @apply bg-[#0e0e0e] text-zinc-300 antialiased font-sans;
   }
+}
+
+/* ── Currency background particle animations ── */
+@keyframes currencyFloat {
+  0%   { transform: translateY(0vh) translateX(0px); opacity: var(--start-opacity, 0); }
+  5%   { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-120vh) translateX(var(--drift, 0px)); opacity: 0; }
+}
+
+@keyframes currencyDrift {
+  from { transform: translateX(0px); }
+  to   { transform: translateX(var(--drift, 40px)); }
+}
+
+@keyframes currencyRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(var(--rotate-dir, 360deg)); }
+}
+
+@keyframes currencyGlow {
+  0%, 100% { text-shadow: 0 0 6px currentColor; }
+  50%       { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
 }

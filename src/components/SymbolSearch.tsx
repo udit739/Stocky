@@ -78,16 +78,15 @@ export const SymbolSearch: React.FC<SymbolSearchProps> = ({ onSelectSymbol, isLo
                 onClick={() => setOpen(v => !v)}
                 aria-label={open ? 'Close Symbol Finder' : 'Open Symbol Finder'}
                 style={{ top: '50%', transform: 'translateY(-50%)' }}
-                className="fixed right-0 z-50 flex flex-col items-center gap-1.5 py-5 px-2 bg-gradient-to-b from-purple-600 to-violet-700 text-white rounded-l-2xl shadow-2xl hover:from-purple-500 hover:to-violet-600 transition-all duration-200"
+                className="fixed right-0 z-50 flex flex-col items-center gap-1.5 py-5 px-2 bg-[#131313]/90 backdrop-blur-xl border border-r-0 border-white/10 text-white rounded-l-2xl shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:bg-[#1a1919] hover:border-[#8ff5ff]/50 transition-all duration-200 group"
             >
-                {open ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                {open ? <ChevronRight size={16} className="text-zinc-400 group-hover:text-[#8ff5ff]" /> : <Search size={16} className="text-[#8ff5ff]" />}
                 <span
-                    className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
+                    className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap text-zinc-400 group-hover:text-white transition-colors"
                     style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)' }}
                 >
-                    Symbol Finder
+                    Ticker Search
                 </span>
-                <TrendingUp size={15} className="opacity-80" />
             </button>
 
             {/* Backdrop */}
@@ -113,31 +112,31 @@ export const SymbolSearch: React.FC<SymbolSearchProps> = ({ onSelectSymbol, isLo
                 className="fixed top-0 right-0 h-full z-50 w-80 flex flex-col"
                 style={{ willChange: 'transform' }}
             >
-                <div className="h-full flex flex-col bg-[#1e1630]/90 backdrop-blur-xl border-l border-white/10 shadow-2xl">
+                <div className="h-full flex flex-col bg-[#0e0e0e]/95 backdrop-blur-2xl border-l border-white/5 shadow-2xl">
 
                     {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-                        <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-purple-500/25 border border-purple-400/30 flex items-center justify-center">
-                                <TrendingUp size={14} className="text-purple-300" />
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#8ff5ff]/20 to-[#00deec]/5 border border-[#8ff5ff]/20 flex items-center justify-center">
+                                <Search size={14} className="text-[#8ff5ff]" />
                             </div>
-                            <span className="text-sm font-bold text-white tracking-wide">Symbol Finder</span>
+                            <span className="text-xs font-black text-white uppercase tracking-widest">Ticker Search</span>
                         </div>
                         <button
                             onClick={handleClose}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                            className="w-8 h-8 flex items-center justify-center rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-colors"
                         >
-                            <X size={15} />
+                            <X size={16} />
                         </button>
                     </div>
 
                     {/* Search input */}
-                    <div className="px-4 py-4 border-b border-white/8">
+                    <div className="px-5 py-5 border-b border-white/5">
                         <div className="relative">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                                 {searching
-                                    ? <Loader2 size={15} className="animate-spin text-purple-400" />
-                                    : <Search size={15} className="text-white/35" />
+                                    ? <Loader2 size={16} className="animate-spin text-[#8ff5ff]" />
+                                    : <Search size={16} className="text-zinc-500" />
                                 }
                             </div>
                             <input
@@ -145,21 +144,21 @@ export const SymbolSearch: React.FC<SymbolSearchProps> = ({ onSelectSymbol, isLo
                                 type="text"
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
-                                placeholder="e.g. Apple, Reliance, EV India…"
+                                placeholder="e.g. NVDA, AAPL, Tesla..."
                                 disabled={isLoading}
-                                className="w-full pl-9 pr-8 py-2.5 bg-white/8 border border-white/15 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400/50 transition-all"
+                                className="w-full pl-11 pr-10 py-3.5 bg-[#1a1919] border border-white/5 rounded-2xl text-sm font-bold tracking-wide text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-[#8ff5ff] transition-all uppercase"
                             />
                             {query && (
                                 <button
                                     onClick={() => { setQuery(''); setResults([]); inputRef.current?.focus(); }}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35 hover:text-white/70 transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
                                 >
-                                    <X size={13} />
+                                    <X size={14} />
                                 </button>
                             )}
                         </div>
-                        <p className="mt-1.5 text-[10px] text-white/25 pl-1">
-                            Search by company name or ticker symbol
+                        <p className="mt-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-2">
+                            Global Market Search
                         </p>
                     </div>
 
@@ -173,22 +172,22 @@ export const SymbolSearch: React.FC<SymbolSearchProps> = ({ onSelectSymbol, isLo
 
                             {!error && results.length === 0 && !searching && !query && (
                                 <motion.div key="hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                    className="px-5 py-8 flex flex-col items-center text-center gap-4"
+                                    className="px-5 py-10 flex flex-col items-center text-center gap-6"
                                 >
-                                    <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-400/20 flex items-center justify-center">
-                                        <Search size={20} className="text-purple-400" />
+                                    <div className="w-16 h-16 rounded-[20px] bg-[#1a1919] border border-white/5 shadow-inner flex items-center justify-center">
+                                        <Search size={24} className="text-zinc-600" />
                                     </div>
-                                    <p className="text-[12px] text-white/35 leading-relaxed">
-                                        Type a company name or ticker to find and analyze any stock.
+                                    <p className="text-xs text-zinc-500 font-medium leading-relaxed max-w-[200px]">
+                                        Enter a <span className="text-white">ticker</span> or <span className="text-white">company</span> to launch neural analysis.
                                     </p>
 
                                     {/* US quick-picks */}
-                                    <div className="w-full text-left px-1">
-                                        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 mb-1.5">🇺🇸 US</p>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {['AAPL', 'TSLA', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META'].map(s => (
+                                    <div className="w-full text-left mt-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600 mb-3">Popular US</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['AAPL', 'TSLA', 'MSFT', 'NVDA', 'GOOGL', 'AMZN'].map(s => (
                                                 <button key={s} onClick={() => handleSelect(s)} disabled={isLoading}
-                                                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white/8 border border-white/12 text-white/60 hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-400/30 transition-all disabled:opacity-40">
+                                                    className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white/5 border border-white/5 text-zinc-400 hover:bg-[#8ff5ff]/10 hover:text-[#8ff5ff] hover:border-[#8ff5ff]/20 hover:shadow-[0_0_15px_rgba(143,245,255,0.15)] transition-all disabled:opacity-40">
                                                     {s}
                                                 </button>
                                             ))}
@@ -196,21 +195,17 @@ export const SymbolSearch: React.FC<SymbolSearchProps> = ({ onSelectSymbol, isLo
                                     </div>
 
                                     {/* India quick-picks */}
-                                    <div className="w-full text-left px-1">
-                                        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 mb-1.5">🇮🇳 India (BSE)</p>
-                                        <div className="flex flex-wrap gap-1.5">
+                                    <div className="w-full text-left mt-2">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600 mb-3">Popular India</p>
+                                        <div className="flex flex-wrap gap-2">
                                             {[
-                                                { label: 'RELIANCE', sym: 'RELIANCE.BSE' },
+                                                { label: 'Reliance', sym: 'RELIANCE.BSE' },
                                                 { label: 'TCS', sym: 'TCS.BSE' },
-                                                { label: 'INFY', sym: 'INFY.BSE' },
-                                                { label: 'HDFC Bank', sym: 'HDFCBANK.BSE' },
-                                                { label: 'WIPRO', sym: 'WIPRO.BSE' },
-                                                { label: 'ICICI Bank', sym: 'ICICIBANK.BSE' },
+                                                { label: 'HDFC', sym: 'HDFCBANK.BSE' },
                                                 { label: 'Tata Motors', sym: 'TATAMOTORS.BSE' },
-                                                { label: 'SBI', sym: 'SBIN.BSE' },
                                             ].map(({ label, sym }) => (
                                                 <button key={sym} onClick={() => handleSelect(sym)} disabled={isLoading}
-                                                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-orange-500/10 border border-orange-400/20 text-orange-200/70 hover:bg-orange-500/25 hover:text-orange-200 hover:border-orange-400/40 transition-all disabled:opacity-40">
+                                                    className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white/5 border border-white/5 text-zinc-400 hover:bg-[#ac8aff]/10 hover:text-[#ac8aff] hover:border-[#ac8aff]/20 hover:shadow-[0_0_15px_rgba(172,138,255,0.15)] transition-all disabled:opacity-40">
                                                     {label}
                                                 </button>
                                             ))}
@@ -227,33 +222,35 @@ export const SymbolSearch: React.FC<SymbolSearchProps> = ({ onSelectSymbol, isLo
                             )}
 
                             {!error && results.length > 0 && (
-                                <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                    <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/30">
-                                        {results.length} result{results.length !== 1 ? 's' : ''}
+                                <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-2 space-y-1">
+                                    <p className="px-3 pt-2 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                                        Matches
                                     </p>
                                     {results.map((m, i) => (
                                         <button
                                             key={`${m.symbol}-${i}`}
                                             onClick={() => handleSelect(m.symbol)}
                                             disabled={isLoading}
-                                            className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-white/8 active:bg-white/12 transition-colors border-b border-white/6 last:border-b-0 group disabled:opacity-40 disabled:cursor-not-allowed"
+                                            className="w-full text-left px-3 py-3 flex items-center gap-4 rounded-2xl hover:bg-white/5 transition-all group disabled:opacity-40 disabled:cursor-not-allowed"
                                         >
-                                            <div className="mt-0.5 shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500/25 to-violet-600/20 border border-purple-400/25 flex items-center justify-center">
-                                                <TrendingUp size={13} className="text-purple-300" />
+                                            <div className="shrink-0 w-10 h-10 rounded-xl bg-[#1a1919] border border-white/5 flex items-center justify-center group-hover:border-[#8ff5ff]/20 group-hover:bg-[#8ff5ff]/10 transition-colors">
+                                                <TrendingUp size={16} className="text-zinc-500 group-hover:text-[#8ff5ff]" />
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-1.5 mb-0.5">
-                                                    <span className="text-[13px] font-bold text-white group-hover:text-purple-200 transition-colors">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm font-black text-white group-hover:text-[#8ff5ff] transition-colors tracking-wide">
                                                         {m.symbol}
                                                     </span>
-                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/8 border border-white/10 text-white/45 shrink-0">
+                                                    <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm bg-white/5 text-zinc-400 shrink-0">
                                                         {m.type || 'Equity'}
                                                     </span>
                                                 </div>
-                                                <p className="text-[11px] text-white/55 truncate leading-tight">{m.name}</p>
-                                                <p className="text-[10px] text-white/30 mt-0.5">{m.region} · {m.currency}</p>
+                                                <p className="text-xs text-zinc-400 truncate leading-tight font-medium">{m.name}</p>
                                             </div>
-                                            <ChevronRight size={13} className="shrink-0 mt-2 text-white/20 group-hover:text-purple-400 transition-colors" />
+                                            <div className="shrink-0 text-right pr-1">
+                                                <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest leading-tight">{m.region}</p>
+                                                <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest leading-tight">{m.currency}</p>
+                                            </div>
                                         </button>
                                     ))}
                                 </motion.div>
@@ -262,8 +259,8 @@ export const SymbolSearch: React.FC<SymbolSearchProps> = ({ onSelectSymbol, isLo
                     </div>
 
                     {/* Footer */}
-                    <div className="px-5 py-3 border-t border-white/8">
-                        <p className="text-[10px] text-white/25 text-center">Click a result to run full AI analysis</p>
+                    <div className="px-5 py-4 border-t border-white/5 bg-black/20">
+                        <p className="text-[10px] font-black text-zinc-600 tracking-widest uppercase text-center">Terminal Initialized</p>
                     </div>
                 </div>
             </motion.div>
