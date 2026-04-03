@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 
 // 10 countries with their currency symbols and accent colors
 const CURRENCIES = [
-  { symbol: '$', country: 'USD', color: '#8ff5ff' },  // USA
-  { symbol: '€', country: 'EUR', color: '#ac8aff' },  // Euro
-  { symbol: '£', country: 'GBP', color: '#ffd580' },  // UK
-  { symbol: '¥', country: 'JPY', color: '#ff8c8c' },  // Japan
-  { symbol: '₹', country: 'INR', color: '#80ffb4' },  // India
-  { symbol: '₩', country: 'KRW', color: '#ffb347' },  // South Korea
-  { symbol: 'Fr', country: 'CHF', color: '#ff6ec7' },  // Switzerland
-  { symbol: 'A$', country: 'AUD', color: '#6ecbff' },  // Australia
-  { symbol: 'C$', country: 'CAD', color: '#ff9580' },  // Canada
-  { symbol: 'R$', country: 'BRL', color: '#afffaf' },  // Brazil
+  { symbol: '$', country: 'USD', color: '#ffffffff' },  // USA
+  { symbol: '€', country: 'EUR', color: '#ffffffff' },  // Euro
+  { symbol: '£', country: 'GBP', color: '#ffffffff' },  // UK
+  { symbol: '¥', country: 'JPY', color: '#ffffffff' },  // Japan
+  { symbol: '₹', country: 'INR', color: '#ffffffff' },  // India
+  { symbol: '₩', country: 'KRW', color: '#ffffffff' },  // South Korea
+  { symbol: 'Fr', country: 'CHF', color: '#ffffffff' },  // Switzerland
+  { symbol: 'A$', country: 'AUD', color: '#ffffffff' },  // Australia
+  { symbol: 'C$', country: 'CAD', color: '#ffffffff' },  // Canada
+  { symbol: 'R$', country: 'BRL', color: '#ffffffff' },  // Brazil
 ];
 
 interface Particle {

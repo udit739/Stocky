@@ -131,12 +131,12 @@ function CompareSearchBar({ onCompare, isLoading }: CompareSearchBarProps) {
 }
 
 const TICKER_CURRENCIES = [
-  { symbol: '$', color: '#8ff5ff' },
-  { symbol: '€', color: '#ac8aff' },
-  { symbol: '£', color: '#ffd580' },
-  { symbol: '¥', color: '#ff8c8c' },
-  { symbol: '₹', color: '#80ffb4' },
-  { symbol: '₩', color: '#ffb347' },
+  { symbol: '.', color: '#8ff5ff' },
+  { symbol: '', color: '#ac8aff' },
+  { symbol: '.', color: '#ffd580' },
+  { symbol: '.', color: '#ff8c8c' },
+  { symbol: '.', color: '#80ffb4' },
+  { symbol: '.', color: '#ffb347' },
 ];
 
 function TickerParticles() {
