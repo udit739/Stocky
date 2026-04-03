@@ -130,6 +130,70 @@ function CompareSearchBar({ onCompare, isLoading }: CompareSearchBarProps) {
   );
 }
 
+const TICKER_CURRENCIES = [
+  { symbol: '$', color: '#8ff5ff' },
+  { symbol: '€', color: '#ac8aff' },
+  { symbol: '£', color: '#ffd580' },
+  { symbol: '¥', color: '#ff8c8c' },
+  { symbol: '₹', color: '#80ffb4' },
+  { symbol: '₩', color: '#ffb347' },
+];
+
+function TickerParticles() {
+  const particles = React.useMemo(() => {
+    return [...Array(20)].map((_, i) => {
+      const cur = TICKER_CURRENCIES[Math.floor(Math.random() * TICKER_CURRENCIES.length)];
+      return {
+        id: i,
+        symbol: cur.symbol,
+        size: Math.random() * 0.7 + 0.5, // rem
+        color: cur.color,
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        xOffset: Math.random() > 0.5 ? 40 : -40,
+        yOffset: Math.random() > 0.5 ? 20 : -20,
+        duration: Math.random() * 6 + 4,
+        delay: Math.random() * 2,
+        rotate: Math.random() * 360,
+      };
+    });
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-20">
+      {particles.map((p) => (
+        <motion.span
+          key={p.id}
+          className="absolute font-black select-none"
+          style={{
+            fontSize: `${p.size}rem`,
+            color: p.color,
+            left: p.left,
+            top: p.top,
+            textShadow: `0 0 12px ${p.color}`,
+          }}
+          initial={{ rotate: p.rotate }}
+          animate={{
+            x: [0, p.xOffset],
+            y: [0, p.yOffset],
+            rotate: [p.rotate, p.rotate + 90],
+            opacity: [0, 0.75, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            repeatType: 'reverse',
+            ease: 'easeInOut',
+            delay: p.delay,
+          }}
+        >
+          {p.symbol}
+        </motion.span>
+      ))}
+    </div>
+  );
+}
+
 // ── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -218,34 +282,43 @@ export default function App() {
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-20 overflow-x-hidden">
         {/* Header */}
         <motion.header style={{ opacity: opacityHeader }} className="text-center mb-10">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-[#8ff5ff] text-xs font-bold uppercase tracking-widest mb-6 shadow-[0_0_15px_rgba(143,245,255,0.15)]"
-          >
-            <BrainCircuit size={14} />
-            Neural Market Prediction
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: -10, rotateX: -10 }}
-            animate={{ opacity: 1, y: 0, rotateX: 0 }}
-            transition={{ delay: 0.1, type: 'spring', damping: 20 }}
-            className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-6 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            STOCK<span className="text-transparent bg-clip-text bg-gradient-to-br from-[#8ff5ff] to-[#00deec]">Y</span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-zinc-400 text-lg max-w-xl mx-auto font-medium"
-          >
-            Enter a ticker symbol to access real-time optics and deep neural predictions.
-          </motion.p>
         </motion.header>
+        {/* ── Marquee ticker strip ── */}
+        <div className="relative overflow-hidden py-3 mb-10 rounded-2xl border border-white/10" style={{ background: '#000000' }}>
+          <TickerParticles />
+          {/* Scrolling track — two identical halves for seamless loop */}
+          <div
+            className="relative z-10 inline-flex whitespace-nowrap animate-[marqueeScroll_13s_linear_infinite] hover:[animation-play-state:paused] cursor-default select-none"
+          >
+            {[0, 1].map(set => (
+              <span key={set} className="inline-flex items-center">
+                {['STOCK', 'STOCK', 'STOCK', 'STOCK', 'STOCK', 'STOCK', 'STOCK', 'STOCK'].map((word, i) => (
+                  <span key={i} className="inline-flex items-center gap-6 mr-10">
+                    <span
+                      className="font-black text-2xl md:text-3xl"
+                      style={{
+                        letterSpacing: '0.35em',
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        color: i % 2 === 0 ? '#16e616ff' : '#ce27f0ff',
+                        textShadow: i % 2 === 0
+                          ? '0 0 18px rgba(143,245,255,0.35)'
+                          : '0 0 18px rgba(199, 4, 4, 0.35)',
+                        opacity: 0.75,
+                      }}
+                    >
+                      {word}<span style={{ color: i % 2 === 0 ? '#75f071ff' : '#e54edeff' }}>Y</span>
+                    </span>
+                    <span className="text-white/20 font-bold select-none">✦</span>
+                  </span>
+                ))}
+              </span>
+            ))}
+          </div>
+        </div>
+
 
         {/* ── Mode Switcher ── */}
+
         <motion.div
           initial={{ opacity: 0, y: -8, zZ: -50 }}
           animate={{ opacity: 1, y: 0, zIndex: 10 }}
@@ -384,9 +457,6 @@ export default function App() {
               animate={{ opacity: 10 }}
               className="mt-20 text-center space-y-6"
             >
-              <div className="w-20 h-20 bg-white rounded-3xl border border-zinc-100 shadow-sm flex items-center justify-center mx-auto text-zinc-300">
-                <LineChart size={40} />
-              </div>
               <p className="text-black font-semibold">Enter a ticker symbol above to get started.</p>
             </motion.div>
           )}
@@ -405,15 +475,7 @@ export default function App() {
 
         </AnimatePresence>
 
-        {/* Footer */}
-        <footer className="mt-32 pt-8 border-t border-zinc-200/50 text-center">
-          <p className="text-xs text-white font-medium uppercase tracking-widest">
-            Powered by Alpha Vantage &amp; Google Gemini AI
-          </p>
-          <p className="mt-4 text-[10px] text-white max-w-md mx-auto leading-relaxed">
-            Disclaimer: This is a college project demo. Predictions are generated by AI and do not constitute financial advice. Always do your own research.
-          </p>
-        </footer>
+
       </div>
 
       {/* Fixed sliding drawer — always rendered, toggle via tab */}

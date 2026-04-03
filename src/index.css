@@ -47,3 +47,8 @@
   0%, 100% { text-shadow: 0 0 6px currentColor; }
   50%       { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
 }
+
+@keyframes marqueeScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}

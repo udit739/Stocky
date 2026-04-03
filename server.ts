@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 import { createRequire } from "module";
 import { GoogleGenAI } from "@google/genai";
+import yahooFinance from "yahoo-finance2";
 import { calculateRSI, calculateSMA, calculateEMA, calculateMACD } from "./src/utils/technicalAnalysis";
 
 // Allow require() in ESM context for the CJS `arima` package
@@ -406,24 +407,75 @@ app.get("/api/fundamentals", async (req, res) => {
     );
     const ov: any = await ovRes.json();
 
+    let payload = {
+      peRatio: null as number | null,
+      forwardPE: null as number | null,
+      divYield: null as number | null,
+      marketCap: null as number | null,
+      beta: null as number | null,
+      eps: null as number | null,
+      week52High: null as number | null,
+      week52Low: null as number | null,
+      sector: null as string | null,
+      industry: null as string | null,
+      rateLimited: false
+    };
+
     if (ov["Note"] || ov["Information"]) {
       console.warn(`[fundamentals] Rate-limited for ${sym}`);
-      // Return nulls — frontend shows N/A and caller can retry later
-      return res.json({ peRatio: null, forwardPE: null, divYield: null, marketCap: null, beta: null, eps: null, week52High: null, week52Low: null, sector: null, industry: null, rateLimited: true });
+      payload.rateLimited = true;
+    } else {
+      payload.peRatio = safeNum(ov["TrailingPE"]);
+      payload.forwardPE = safeNum(ov["ForwardPE"]);
+      payload.divYield = safeNum(ov["DividendYield"]);
+      payload.marketCap = safeNum(ov["MarketCapitalization"]);
+      payload.beta = safeNum(ov["Beta"]);
+      payload.eps = safeNum(ov["EPS"]);
+      payload.week52High = safeNum(ov["52WeekHigh"]);
+      payload.week52Low = safeNum(ov["52WeekLow"]);
+      payload.sector = (ov["Sector"] && ov["Sector"] !== "None") ? ov["Sector"] : null;
+      payload.industry = (ov["Industry"] && ov["Industry"] !== "None") ? ov["Industry"] : null;
     }
 
-    const payload = {
-      peRatio:    safeNum(ov["TrailingPE"]),
-      forwardPE:  safeNum(ov["ForwardPE"]),
-      divYield:   safeNum(ov["DividendYield"]),
-      marketCap:  safeNum(ov["MarketCapitalization"]),
-      beta:       safeNum(ov["Beta"]),
-      eps:        safeNum(ov["EPS"]),
-      week52High: safeNum(ov["52WeekHigh"]),
-      week52Low:  safeNum(ov["52WeekLow"]),
-      sector:     (ov["Sector"] && ov["Sector"] !== "None") ? ov["Sector"] : null,
-      industry:   (ov["Industry"] && ov["Industry"] !== "None") ? ov["Industry"] : null,
-    };
+    // Fallback to Yahoo Finance for International/Indian stocks or missing data
+    if (!payload.peRatio && !payload.marketCap && !payload.eps) {
+      console.log(`[fundamentals] Alpha Vantage data empty for ${sym}, falling back to Yahoo Finance...`);
+      try {
+        const yahooSym = sym.replace(".NSE", ".NS").replace(".BSE", ".BO");
+        const YFLib = require("yahoo-finance2").default;
+        const yfApi = typeof YFLib === "function" ? new YFLib() : YFLib;
+
+        const yf = await yfApi.quoteSummary(yahooSym, {
+          modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile']
+        }) as any;
+
+        if (yf.summaryDetail) {
+          payload.peRatio = payload.peRatio ?? yf.summaryDetail.trailingPE ?? null;
+          payload.forwardPE = payload.forwardPE ?? yf.summaryDetail.forwardPE ?? null;
+          payload.divYield = payload.divYield ?? yf.summaryDetail.dividendYield ?? null;
+          payload.marketCap = payload.marketCap ?? yf.summaryDetail.marketCap ?? null;
+          payload.beta = payload.beta ?? yf.summaryDetail.beta ?? null;
+          payload.week52High = payload.week52High ?? yf.summaryDetail.fiftyTwoWeekHigh ?? null;
+          payload.week52Low = payload.week52Low ?? yf.summaryDetail.fiftyTwoWeekLow ?? null;
+        }
+        if (yf.defaultKeyStatistics) {
+          payload.eps = payload.eps ?? yf.defaultKeyStatistics.trailingEps ?? null;
+        }
+        if (yf.assetProfile) {
+          payload.sector = payload.sector ?? yf.assetProfile.sector ?? null;
+          payload.industry = payload.industry ?? yf.assetProfile.industry ?? null;
+        }
+
+        // If we successfully pulled data from Yahoo, clear the rateLimited flag
+        // so the frontend doesn't show an error.
+        if (payload.marketCap || payload.peRatio) {
+          payload.rateLimited = false;
+        }
+      } catch (yErr: any) {
+        console.warn(`[fundamentals] Yahoo Finance fallback failed for ${sym}:`, yErr.message || yErr);
+        payload.sector = "ERROR: " + (yErr.message || "yd-err");
+      }
+    }
 
     console.log(`[fundamentals] OK for ${sym}: PE=${payload.peRatio}, MCap=${payload.marketCap}, EPS=${payload.eps}`);
     overviewCache.set(sym, { data: payload, ts: Date.now() });
@@ -458,22 +510,22 @@ app.get("/api/realtime-quote", async (req, res) => {
       return res.status(404).json({ error: `No live quote available for "${cleanSymbol}".` });
     }
 
-    const price  = parseFloat(q["05. price"]);
+    const price = parseFloat(q["05. price"]);
     const volume = parseInt(q["06. volume"]);
 
     res.json({
-      symbol:           q["01. symbol"] || cleanSymbol,
-      currencySymbol:   getCurrencySymbol(cleanSymbol),
+      symbol: q["01. symbol"] || cleanSymbol,
+      currencySymbol: getCurrencySymbol(cleanSymbol),
       price,
-      open:             parseFloat(q["02. open"]),
-      high:             parseFloat(q["03. high"]),
-      low:              parseFloat(q["04. low"]),
-      previousClose:    parseFloat(q["08. previous close"]),
-      change:           parseFloat(q["09. change"]),
-      changePercent:    q["10. change percent"]?.replace("%", "") ?? "0",
+      open: parseFloat(q["02. open"]),
+      high: parseFloat(q["03. high"]),
+      low: parseFloat(q["04. low"]),
+      previousClose: parseFloat(q["08. previous close"]),
+      change: parseFloat(q["09. change"]),
+      changePercent: q["10. change percent"]?.replace("%", "") ?? "0",
       volume,
       latestTradingDay: q["07. latest trading day"] || "",
-      liquidity:        price * volume,
+      liquidity: price * volume,
     });
   } catch (error) {
     console.error("Error fetching realtime quote:", error);
