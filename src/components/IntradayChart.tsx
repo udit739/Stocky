@@ -49,12 +49,17 @@ export const IntradayChart: React.FC<IntradayChartProps> = ({ symbol, currencySy
     setError(null);
     try {
       const res = await fetch(`/api/intraday?symbol=${encodeURIComponent(symbol)}`);
-      const body = await res.json();
+      const raw = await res.text();
+      const body = raw ? JSON.parse(raw) : {};
       if (!res.ok) throw new Error(body.error || 'Failed to fetch intraday data');
       setData(body.data || []);
       if (body.tradingDay) setTradingDay(body.tradingDay);
     } catch (err: any) {
-      setError(err.message);
+      if (err instanceof SyntaxError) {
+        setError('Intraday endpoint returned an invalid response');
+      } else {
+        setError(err.message || 'Failed to fetch intraday data');
+      }
     } finally {
       setLoading(false);
     }
