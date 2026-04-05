@@ -4,7 +4,8 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 import { createRequire } from "module";
 import { GoogleGenAI } from "@google/genai";
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
+const yahooFinance = new YahooFinance();
 import { calculateRSI, calculateSMA, calculateEMA, calculateMACD } from "./src/utils/technicalAnalysis";
 
 // Allow require() in ESM context for the CJS `arima` package
@@ -442,10 +443,8 @@ app.get("/api/fundamentals", async (req, res) => {
       console.log(`[fundamentals] Alpha Vantage data empty for ${sym}, falling back to Yahoo Finance...`);
       try {
         const yahooSym = sym.replace(".NSE", ".NS").replace(".BSE", ".BO");
-        const YFLib = require("yahoo-finance2").default;
-        const yfApi = typeof YFLib === "function" ? new YFLib() : YFLib;
 
-        const yf = await yfApi.quoteSummary(yahooSym, {
+        const yf = await yahooFinance.quoteSummary(yahooSym, {
           modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile']
         }) as any;
 
@@ -530,6 +529,60 @@ app.get("/api/realtime-quote", async (req, res) => {
   } catch (error) {
     console.error("Error fetching realtime quote:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── /api/intraday — intraday chart data using yahoo-finance2 ─────────────────
+app.get("/api/intraday", async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol || typeof symbol !== "string") {
+    return res.status(400).json({ error: "Symbol is required" });
+  }
+
+  const cleanSymbol = symbol.trim().toUpperCase();
+
+  try {
+    console.log(`[intraday] Fetching 1D chart for: ${cleanSymbol}`);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    const result: any = await yahooFinance.chart(cleanSymbol, {
+      period1: new Date(Date.now() - 24 * 60 * 60 * 1000 * 3), // Grab up to 3 days to be safe for weekends
+      interval: "5m"
+    }, { validateResult: false });
+
+    if (!result || !result.quotes || result.quotes.length === 0) {
+        return res.status(404).json({ error: `Intraday data not found for ${cleanSymbol}` });
+    }
+
+    const allQuotes = result.quotes.map((q: any) => ({
+        date: q.date.toISOString(),
+        open: q.open,
+        high: q.high,
+        low: q.low,
+        close: q.close,
+        volume: q.volume
+    })).filter((q: any) => q.close !== null && q.close !== undefined);
+
+    if (allQuotes.length === 0) {
+      return res.status(404).json({ error: `No intraday data found for ${cleanSymbol}` });
+    }
+
+    // Filter to only the most recent trading day
+    const lastDayStr = allQuotes[allQuotes.length - 1].date.split('T')[0];
+    const data = allQuotes.filter((q: any) => q.date.startsWith(lastDayStr));
+
+    res.json({
+      symbol: cleanSymbol,
+      currencySymbol: getCurrencySymbol(cleanSymbol),
+      data,
+      tradingDay: lastDayStr
+    });
+  } catch (error: any) {
+    console.error("[intraday] Error:", error.message || error);
+    console.error("[intraday] Stack:", error.stack);
+    res.status(500).json({ error: error.message || "Internal server error fetching intraday data" });
   }
 });
 

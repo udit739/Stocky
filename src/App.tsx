@@ -9,8 +9,9 @@ import { PredictionCard } from './components/PredictionCard';
 import { CompareView } from './components/CompareView';
 import { RealTimeTicker } from './components/RealTimeTicker';
 import { CurrencyBackground } from './components/CurrencyBackground';
+import { IntradayChart } from './components/IntradayChart';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
-import { LineChart, BrainCircuit, Info, GitCompareArrows, BarChart2 } from 'lucide-react';
+import { LineChart, BrainCircuit, Info, GitCompareArrows, BarChart2, Activity } from 'lucide-react';
 
 interface PredictionResult {
   trend: 'Bullish' | 'Bearish' | 'Neutral';
@@ -32,7 +33,7 @@ interface StockData {
 }
 
 // ── Mode types ──
-type AppMode = 'single' | 'compare';
+type AppMode = 'single' | 'compare' | 'intraday';
 
 // ── Session-level cache (5-minute TTL) ──
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -346,12 +347,22 @@ export default function App() {
               <GitCompareArrows size={16} className={mode === 'compare' ? 'drop-shadow-[0_0_8px_rgba(172,138,255,0.6)]' : ''} />
               Compare
             </button>
+            <button
+              onClick={() => switchMode('intraday')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${mode === 'intraday'
+                ? 'bg-gradient-to-br from-[#1a1919] to-[#262626] text-[#80ffb4] shadow-[0_0_20px_rgba(128,255,180,0.1)] border border-[#80ffb4]/20'
+                : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                }`}
+            >
+              <Activity size={16} className={mode === 'intraday' ? 'drop-shadow-[0_0_8px_rgba(128,255,180,0.6)]' : ''} />
+              Intraday
+            </button>
           </div>
         </motion.div>
 
         {/* ── Search Section ── */}
         <AnimatePresence mode="wait">
-          {mode === 'single' ? (
+          {mode === 'single' || mode === 'intraday' ? (
             <motion.div key="single-search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <SearchBar onSearch={handleSearch} isLoading={isLoadingSingle} value={activeSymbol} />
             </motion.div>
@@ -366,7 +377,7 @@ export default function App() {
         <AnimatePresence mode="wait">
 
           {/* Shared error display */}
-          {(mode === 'single' ? errorSingle : errorCompare) && (
+          {((mode === 'single' || mode === 'intraday') ? errorSingle : errorCompare) && (
             <motion.div
               key="error"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -379,13 +390,13 @@ export default function App() {
               </div>
               <div>
                 <h4 className="font-bold">Error</h4>
-                <p className="text-sm opacity-80">{mode === 'single' ? errorSingle : errorCompare}</p>
+                <p className="text-sm opacity-80">{(mode === 'single' || mode === 'intraday') ? errorSingle : errorCompare}</p>
               </div>
             </motion.div>
           )}
 
           {/* Single stock results */}
-          {mode === 'single' && stockData && !isLoadingSingle && (
+          {(mode === 'single' || mode === 'intraday') && stockData && !isLoadingSingle && (
             <motion.div
               key="single-results"
               initial={{ opacity: 0 }}
@@ -397,30 +408,45 @@ export default function App() {
                   symbol={stockData.symbol}
                   currencySymbol={stockData.currencySymbol}
                 />
-                <PredictionCard
-                  prediction={stockData.prediction}
-                  symbol={stockData.symbol}
-                  currencySymbol={stockData.currencySymbol}
-                  currentPrice={stockData.latestPrice}
-                  priceChange={priceChangePercent}
-                  latestRSI={stockData.latestRSI}
-                  stockData={stockData.data}
-                  arimaForecast={stockData.arimaForecast}
-                />
-                <div className="space-y-4">
-                  <StockChart
-                    data={stockData.data}
+                
+                {mode === 'single' && (
+                  <PredictionCard
+                    prediction={stockData.prediction}
                     symbol={stockData.symbol}
                     currencySymbol={stockData.currencySymbol}
-                  />
-                  <RsiChart data={stockData.data} />
-                  <VolumeChart data={stockData.data} />
-                  <ArimaChart
-                    data={stockData.data}
+                    currentPrice={stockData.latestPrice}
+                    priceChange={priceChangePercent}
+                    latestRSI={stockData.latestRSI}
+                    stockData={stockData.data}
                     arimaForecast={stockData.arimaForecast}
-                    symbol={stockData.symbol}
-                    currencySymbol={stockData.currencySymbol}
                   />
+                )}
+
+                <div className="space-y-4">
+                  {mode === 'intraday' && (
+                    <IntradayChart
+                      symbol={stockData.symbol}
+                      currencySymbol={stockData.currencySymbol}
+                    />
+                  )}
+
+                  {mode === 'single' && (
+                    <>
+                      <StockChart
+                        data={stockData.data}
+                        symbol={stockData.symbol}
+                        currencySymbol={stockData.currencySymbol}
+                      />
+                      <RsiChart data={stockData.data} />
+                      <VolumeChart data={stockData.data} />
+                      <ArimaChart
+                        data={stockData.data}
+                        arimaForecast={stockData.arimaForecast}
+                        symbol={stockData.symbol}
+                        currencySymbol={stockData.currencySymbol}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -450,7 +476,7 @@ export default function App() {
           )}
 
           {/* Empty state */}
-          {mode === 'single' && !stockData && !isLoadingSingle && !errorSingle && (
+          {(mode === 'single' || mode === 'intraday') && !stockData && !isLoadingSingle && !errorSingle && (
             <motion.div
               key="empty"
               initial={{ opacity: 5 }}
