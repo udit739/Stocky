@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { GoogleGenAI } from "@google/genai";
+import YahooFinance from "yahoo-finance2";
+
+const yahooFinance = new YahooFinance();
 
 // ── Technical Analysis Functions (inlined for serverless) ──
 
@@ -273,10 +276,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const cleanSymbol = symbol.trim().toUpperCase();
-
-  if (!apiKey) {
-    return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY is not configured. Please add it in Vercel Environment Variables." });
-  }
 
   try {
     console.log(`[stock-data] Fetching data for: ${cleanSymbol}`);

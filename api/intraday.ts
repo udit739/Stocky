@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import YahooFinance from "yahoo-finance2";
+import fetch from "node-fetch";
 const yahooFinance = new YahooFinance();
 
 function getCurrencySymbol(symbol: string): string {
@@ -33,46 +34,119 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     console.log(`[intraday] Fetching 1D chart for: ${cleanSymbol}`);
-    
-    // Using yahoo-finance2 to get intraday chart.
-    // Interval '2m' or '5m' with range '1d' covers the latest trading day nicely without overwhelming.
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
 
-    const result: any = await yahooFinance.chart(cleanSymbol, {
-      period1: new Date(Date.now() - 24 * 60 * 60 * 1000 * 3),
-      interval: "5m"
-    }, { validateResult: false });
-
-    if (!result || !result.quotes || result.quotes.length === 0) {
-        return res.status(404).json({ error: `Intraday data not found for ${cleanSymbol}` });
+    const yahooData = await getYahooIntraday(cleanSymbol);
+    if (yahooData.length > 0) {
+      const lastDayStr = yahooData[yahooData.length - 1].date.split("T")[0];
+      return res.json({
+        symbol: cleanSymbol,
+        currencySymbol: getCurrencySymbol(cleanSymbol),
+        data: yahooData.filter((q) => q.date.startsWith(lastDayStr)),
+        tradingDay: lastDayStr,
+        source: "yahoo",
+      });
     }
 
-    const allQuotes = result.quotes.map((q: any) => ({
-        date: q.date.toISOString(),
-        open: q.open,
-        high: q.high,
-        low: q.low,
-        close: q.close,
-        volume: q.volume
-    })).filter((q: any) => q.close !== null && q.close !== undefined);
-
-    if (allQuotes.length === 0) {
-      return res.status(404).json({ error: `No intraday data found for ${cleanSymbol}` });
+    const alphaData = await getAlphaIntraday(cleanSymbol, process.env.ALPHA_VANTAGE_API_KEY);
+    if (alphaData.length > 0) {
+      const lastDayStr = alphaData[alphaData.length - 1].date.split("T")[0];
+      return res.json({
+        symbol: cleanSymbol,
+        currencySymbol: getCurrencySymbol(cleanSymbol),
+        data: alphaData.filter((q) => q.date.startsWith(lastDayStr)),
+        tradingDay: lastDayStr,
+        source: "alpha-vantage",
+      });
     }
 
-    // Filter to only the most recent trading day
-    const lastDayStr = allQuotes[allQuotes.length - 1].date.split('T')[0];
-    const data = allQuotes.filter((q: any) => q.date.startsWith(lastDayStr));
-
-    return res.json({
-      symbol: cleanSymbol,
-      currencySymbol: getCurrencySymbol(cleanSymbol),
-      data,
-      tradingDay: lastDayStr
+    return res.status(404).json({
+      error: `No intraday data available for ${cleanSymbol}. Try a Yahoo-format symbol such as RELIANCE.NS, TCS.NS, or AAPL.`,
     });
   } catch (error: any) {
     console.error("Error fetching intraday data:", error.message || error);
     return res.status(500).json({ error: error.message || "Internal server error fetching intraday data" });
+  }
+}
+
+type IntradayPoint = {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+};
+
+function normalizePoints(points: IntradayPoint[]): IntradayPoint[] {
+  return points
+    .filter((q) =>
+      q &&
+      q.date &&
+      Number.isFinite(q.open) &&
+      Number.isFinite(q.high) &&
+      Number.isFinite(q.low) &&
+      Number.isFinite(q.close)
+    )
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+async function getYahooIntraday(symbol: string): Promise<IntradayPoint[]> {
+  try {
+    const result: any = await yahooFinance.chart(
+      symbol,
+      {
+        range: "5d",
+        interval: "5m",
+        includePrePost: false,
+      },
+      { validateResult: false }
+    );
+
+    const quotes = Array.isArray(result?.quotes) ? result.quotes : [];
+    return normalizePoints(
+      quotes.map((q: any) => ({
+        date: q.date instanceof Date ? q.date.toISOString() : new Date(q.date).toISOString(),
+        open: Number(q.open),
+        high: Number(q.high),
+        low: Number(q.low),
+        close: Number(q.close),
+        volume: Number(q.volume ?? 0),
+      }))
+    );
+  } catch (error: any) {
+    console.warn(`[intraday] Yahoo intraday failed for ${symbol}:`, error.message || error);
+    return [];
+  }
+}
+
+async function getAlphaIntraday(symbol: string, apiKey?: string): Promise<IntradayPoint[]> {
+  if (!apiKey) return [];
+
+  try {
+    const response = await fetch(
+      `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${encodeURIComponent(symbol)}&interval=5min&outputsize=full&apikey=${apiKey}`
+    );
+    const payload: any = await response.json();
+
+    if (payload?.Note || payload?.Information || payload?.ErrorMessage) {
+      return [];
+    }
+
+    const series = payload?.["Time Series (5min)"];
+    if (!series || typeof series !== "object") return [];
+
+    return normalizePoints(
+      Object.entries(series).map(([timestamp, values]: [string, any]) => ({
+        date: new Date(timestamp.replace(" ", "T")).toISOString(),
+        open: Number(values["1. open"]),
+        high: Number(values["2. high"]),
+        low: Number(values["3. low"]),
+        close: Number(values["4. close"]),
+        volume: Number(values["5. volume"] ?? 0),
+      }))
+    );
+  } catch (error: any) {
+    console.warn(`[intraday] Alpha Vantage intraday failed for ${symbol}:`, error.message || error);
+    return [];
   }
 }

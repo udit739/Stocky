@@ -205,6 +205,7 @@ export default function App() {
   const [errorSingle, setErrorSingle] = useState<string | null>(null);
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [activeSymbol, setActiveSymbol] = useState('');
+  const [intradaySymbol, setIntradaySymbol] = useState('');
 
   // ── Scroll Parallax ──
   const { scrollY } = useScroll();
@@ -218,6 +219,14 @@ export default function App() {
   const [compareStocks, setCompareStocks] = useState<{ a: StockData; b: StockData } | null>(null);
 
   const handleSearch = async (symbol: string) => {
+    if (mode === 'intraday') {
+      setErrorSingle(null);
+      setStockData(null);
+      setActiveSymbol(symbol);
+      setIntradaySymbol(symbol);
+      return;
+    }
+
     setIsLoadingSingle(true);
     setErrorSingle(null);
     setStockData(null);
@@ -396,7 +405,7 @@ export default function App() {
           )}
 
           {/* Single stock results */}
-          {(mode === 'single' || mode === 'intraday') && stockData && !isLoadingSingle && (
+          {mode === 'single' && stockData && !isLoadingSingle && (
             <motion.div
               key="single-results"
               initial={{ opacity: 0 }}
@@ -409,46 +418,49 @@ export default function App() {
                   currencySymbol={stockData.currencySymbol}
                 />
                 
-                {mode === 'single' && (
-                  <PredictionCard
-                    prediction={stockData.prediction}
-                    symbol={stockData.symbol}
-                    currencySymbol={stockData.currencySymbol}
-                    currentPrice={stockData.latestPrice}
-                    priceChange={priceChangePercent}
-                    latestRSI={stockData.latestRSI}
-                    stockData={stockData.data}
-                    arimaForecast={stockData.arimaForecast}
-                  />
-                )}
+                <PredictionCard
+                  prediction={stockData.prediction}
+                  symbol={stockData.symbol}
+                  currencySymbol={stockData.currencySymbol}
+                  currentPrice={stockData.latestPrice}
+                  priceChange={priceChangePercent}
+                  latestRSI={stockData.latestRSI}
+                  stockData={stockData.data}
+                  arimaForecast={stockData.arimaForecast}
+                />
 
                 <div className="space-y-4">
-                  {mode === 'intraday' && (
-                    <IntradayChart
+                  <>
+                    <StockChart
+                      data={stockData.data}
                       symbol={stockData.symbol}
                       currencySymbol={stockData.currencySymbol}
                     />
-                  )}
-
-                  {mode === 'single' && (
-                    <>
-                      <StockChart
-                        data={stockData.data}
-                        symbol={stockData.symbol}
-                        currencySymbol={stockData.currencySymbol}
-                      />
-                      <RsiChart data={stockData.data} />
-                      <VolumeChart data={stockData.data} />
-                      <ArimaChart
-                        data={stockData.data}
-                        arimaForecast={stockData.arimaForecast}
-                        symbol={stockData.symbol}
-                        currencySymbol={stockData.currencySymbol}
-                      />
-                    </>
-                  )}
+                    <RsiChart data={stockData.data} />
+                    <VolumeChart data={stockData.data} />
+                    <ArimaChart
+                      data={stockData.data}
+                      arimaForecast={stockData.arimaForecast}
+                      symbol={stockData.symbol}
+                      currencySymbol={stockData.currencySymbol}
+                    />
+                  </>
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {mode === 'intraday' && intradaySymbol && !errorSingle && (
+            <motion.div
+              key="intraday-results"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-12 space-y-8"
+            >
+              <IntradayChart
+                symbol={intradaySymbol}
+                currencySymbol="$"
+              />
             </motion.div>
           )}
 
@@ -476,7 +488,7 @@ export default function App() {
           )}
 
           {/* Empty state */}
-          {(mode === 'single' || mode === 'intraday') && !stockData && !isLoadingSingle && !errorSingle && (
+          {mode === 'single' && !stockData && !isLoadingSingle && !errorSingle && (
             <motion.div
               key="empty"
               initial={{ opacity: 5 }}
@@ -484,6 +496,17 @@ export default function App() {
               className="mt-20 text-center space-y-6"
             >
               <p className="text-black font-semibold">Enter a ticker symbol above to get started.</p>
+            </motion.div>
+          )}
+
+          {mode === 'intraday' && !intradaySymbol && !errorSingle && (
+            <motion.div
+              key="empty-intraday"
+              initial={{ opacity: 5 }}
+              animate={{ opacity: 10 }}
+              className="mt-20 text-center space-y-6"
+            >
+              <p className="text-black font-semibold">Enter a ticker symbol above to load the intraday chart.</p>
             </motion.div>
           )}
 
