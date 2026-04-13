@@ -6,6 +6,9 @@ import { createRequire } from "module";
 import { GoogleGenAI } from "@google/genai";
 import YahooFinance from "yahoo-finance2";
 const yahooFinance = new YahooFinance();
+
+const INTRADAY_CACHE_TTL_MS = 60 * 1000;
+const intradayCache = new Map<string, { data: IntradayPoint[]; ts: number }>();
 import { calculateRSI, calculateSMA, calculateEMA, calculateMACD } from "./src/utils/technicalAnalysis";
 
 // Allow require() in ESM context for the CJS `arima` package
@@ -220,103 +223,128 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 
-// API route for symbol search (Alpha Vantage)
+// API route for symbol search (Yahoo Finance)
 app.get("/api/symbol-search", async (req, res) => {
   const { q } = req.query;
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
 
   if (!q || typeof q !== "string") {
     return res.status(400).json({ error: "Query parameter 'q' is required" });
   }
-  if (!apiKey) {
-    return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY is not configured" });
-  }
 
   try {
-    const response = await fetch(
-      `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(q)}&apikey=${apiKey}`
-    );
-    const data: any = await response.json();
-
-    if (data["Note"] || data["Information"]) {
-      return res.json({ bestMatches: [] });
-    }
-
-    const matches = (data["bestMatches"] || []).slice(0, 8).map((m: any) => ({
-      symbol: m["1. symbol"],
-      name: m["2. name"],
-      type: m["3. type"],
-      region: m["4. region"],
-      currency: m["8. currency"],
-    }));
+    const searchResult = await yahooFinance.search(q);
+    const matches = (searchResult.quotes || [])
+      .filter((q: any) => q.isYahooFinance)
+      .slice(0, 8)
+      .map((m: any) => ({
+        symbol: m.symbol,
+        name: m.shortname || m.longname || m.symbol,
+        type: m.quoteType || "EQUITY",
+        region: m.exchDisp || "US",
+        currency: "USD",
+      }));
 
     res.json({ bestMatches: matches });
   } catch (error) {
-    console.error("Error searching symbols:", error);
+    console.error("Error searching symbols via Yahoo:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// API route for Alpha Vantage stock data
+
+// market-overview API
+const MARKET_CACHE_TTL = 5 * 60 * 1000;
+let marketCache: { data: any; ts: number } | null = null;
+
+app.get("/api/market-overview", async (req, res) => {
+  const nocache = req.query.nocache === "1";
+  if (!nocache && marketCache && Date.now() - marketCache.ts < MARKET_CACHE_TTL) {
+    return res.json(marketCache.data);
+  }
+  const worldSymbols = {
+    americas: ["^GSPC","^IXIC","^DJI","^RUT","^VIX"],
+    europe: ["^FTSE","^GDAXI","^FCHI","^STOXX50E","^AEX"],
+    asia: ["^N225","^HSI","000001.SS","^BSESN","^AXJO"]
+  };
+  const sectorDefs = [
+    {name:"Technology",etf:"XLK",weight:28.46},
+    {name:"Financial Services",etf:"XLF",weight:14.11},
+    {name:"Consumer Cyclical",etf:"XLY",weight:10.18},
+    {name:"Communication Services",etf:"XLC",weight:9.94},
+    {name:"Healthcare",etf:"XLV",weight:9.56},
+    {name:"Industrials",etf:"XLI",weight:9.38},
+    {name:"Energy",etf:"XLE",weight:5.44},
+    {name:"Consumer Defensive",etf:"XLP",weight:5.15},
+    {name:"Basic Materials",etf:"XLB",weight:3.11},
+    {name:"Utilities",etf:"XLU",weight:2.41},
+    {name:"Real Estate",etf:"XLRE",weight:2.26}
+  ];
+  const commoditySyms = ["GC=F","SI=F","CL=F","BZ=F","HG=F","NG=F","PL=F"];
+  const currencySyms  = ["EURUSD=X","USDJPY=X","USDHKD=X","USDCAD=X","GBPUSD=X","USDMXN=X","AUDUSD=X"];
+  const bondSyms      = ["^TNX","^TYX","^IRX","^FVX"];
+  const commodityNames: Record<string,string> = {"GC=F":"Gold","SI=F":"Silver","CL=F":"Crude Oil","BZ=F":"Brent Crude","HG=F":"Copper","NG=F":"Natural Gas","PL=F":"Platinum"};
+  const currencyNames: Record<string,string>  = {"EURUSD=X":"EUR/USD","USDJPY=X":"USD/JPY","USDHKD=X":"USD/HKD","USDCAD=X":"USD/CAD","GBPUSD=X":"GBP/USD","USDMXN=X":"USD/MXN","AUDUSD=X":"AUD/USD"};
+  const bondNames: Record<string,string>      = {"^TNX":"10-Yr T-Note","^TYX":"30-Yr Bond","^IRX":"13-Wk T-Bill","^FVX":"5-Yr Bond"};
+  const indexNames: Record<string,string>     = {"^GSPC":"S\u0026P 500","^IXIC":"Nasdaq","^DJI":"Dow 30","^RUT":"Russell 2000","^VIX":"VIX","^FTSE":"FTSE 100","^GDAXI":"DAX P","^FCHI":"CAC 40","^STOXX50E":"EURO STOXX 50","^AEX":"AEX","^N225":"Nikkei 225","^HSI":"Hang Seng","000001.SS":"SSE Composite","^BSESN":"S\u0026P BSE Sensex","^AXJO":"S\u0026P/ASX 200"};
+  const fmt = (q: any, nm?: Record<string,string>) => ({ symbol: q.symbol, name: (nm && nm[q.symbol]) || q.shortName || q.longName || q.symbol, price: q.regularMarketPrice ?? null, change: q.regularMarketChange ?? null, changePct: q.regularMarketChangePercent ?? null });
+  try {
+    const all = [...worldSymbols.americas,...worldSymbols.europe,...worldSymbols.asia,...commoditySyms,...currencySyms,...bondSyms,...sectorDefs.map(s=>s.etf)];
+    const raw: any = await yahooFinance.quote(all as any);
+    const arr: any[] = Array.isArray(raw) ? raw : [raw];
+    const by: Record<string,any> = {};
+    for (const q of arr) by[q.symbol] = q;
+    const pick = (syms: string[], nm?: Record<string,string>) => syms.map(s=>by[s] ? fmt(by[s],nm) : null).filter(Boolean);
+    const sectors = sectorDefs.map(s=>({ name:s.name, etf:s.etf, weight:s.weight, changePct: by[s.etf]?.regularMarketChangePercent ?? null, price: by[s.etf]?.regularMarketPrice ?? null }));
+    const payload = {
+      worldIndices: { americas: pick(worldSymbols.americas,indexNames), europe: pick(worldSymbols.europe,indexNames), asia: pick(worldSymbols.asia,indexNames) },
+      commodities: pick(commoditySyms,commodityNames), currencies: pick(currencySyms,currencyNames), bonds: pick(bondSyms,bondNames), sectors
+    };
+    payload.updatedAt = new Date().toISOString();
+    marketCache = { data: payload, ts: Date.now() };
+    res.json(payload);
+  } catch(err: any) {
+    console.error("[market-overview]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API route for historical stock data (Yahoo Finance)
 app.get("/api/stock-data", async (req, res) => {
   const { symbol } = req.query;
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
 
   if (!symbol || typeof symbol !== "string") {
     return res.status(400).json({ error: "Symbol is required and must be a string" });
   }
 
   const cleanSymbol = symbol.trim().toUpperCase();
-
-  if (!apiKey) {
-    return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY is not configured" });
-  }
+  const yahooSym = cleanSymbol.replace(".NSE", ".NS").replace(".BSE", ".BO");
 
   try {
-    console.log(`[stock-data] Fetching data for: ${cleanSymbol}`);
-    const response = await fetch(
-      `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${cleanSymbol}&apikey=${apiKey}`
-    );
-    const data: any = await response.json();
-
-    if (data["Error Message"]) {
-      console.error(`[stock-data] Alpha Vantage Error for ${cleanSymbol}:`, data["Error Message"]);
-      let errorMessage = `Alpha Vantage Error: Symbol "${cleanSymbol}" not found.`;
-
-      // Add helpful hint for Indian stocks or potentially non-US stocks
-      if (!cleanSymbol.includes(".")) {
-        errorMessage += ` Try adding an exchange suffix like "${cleanSymbol}.BSE" or "${cleanSymbol}.NSE" for Indian stocks.`;
-      }
-
-      return res.status(404).json({ error: errorMessage });
+    console.log(`[stock-data] Fetching historical data for: ${cleanSymbol} (mapped as ${yahooSym})`);
+    
+    // Fetch roughly 150 days of data to fulfill technical indicators array size needs
+    const period1 = new Date(Date.now() - 150 * 24 * 60 * 60 * 1000);
+    const result: any = await yahooFinance.chart(yahooSym, { period1, interval: '1d' }, { validateResult: false });
+    
+    if (!result || !result.quotes || result.quotes.length === 0) {
+      return res.status(404).json({ error: `Yahoo Finance Error: Symbol "${cleanSymbol}" not found or no historical data available.` });
     }
 
-    let timeSeries = data["Time Series (Daily)"];
+    const quotes = result.quotes.filter((q: any) => q.close !== null && q.close !== undefined);
+    
+    // Extract last 100 days maximum as expected by frontend
+    const extractedData = quotes.slice(-100);
+    
+    const processedData = extractedData.map((d: any) => ({
+      date: typeof d.date === 'string' ? d.date.split('T')[0] : new Date(d.date).toISOString().split('T')[0],
+      open: parseFloat(d.open),
+      high: parseFloat(d.high),
+      low: parseFloat(d.low),
+      close: parseFloat(d.close),
+      volume: parseInt(d.volume || 0),
+    }));
 
-    if (data["Note"] || data["Information"]) {
-      console.warn(`[stock-data] Alpha Vantage rate limit hit for ${cleanSymbol}`);
-      return res.status(429).json({
-        error: `Alpha Vantage rate limit reached. The free tier allows 25 requests per day and 5 per minute. Please wait a moment and try again.`,
-      });
-    }
-
-    if (!timeSeries) {
-      console.error("Alpha Vantage Response missing Time Series:", data);
-      return res.status(500).json({ error: "Failed to fetch time series data. The symbol might be unsupported or API key is invalid." });
-    }
-
-    // Extract last 60-100 days
-    const dates = Object.keys(timeSeries).slice(0, 100);
-    const processedData = dates.map(date => ({
-      date,
-      open: parseFloat(timeSeries[date]["1. open"]),
-      high: parseFloat(timeSeries[date]["2. high"]),
-      low: parseFloat(timeSeries[date]["3. low"]),
-      close: parseFloat(timeSeries[date]["4. close"]),
-      volume: parseInt(timeSeries[date]["5. volume"]),
-    })).reverse();
-
-    const closingPrices = processedData.map(d => d.close);
+    const closingPrices = processedData.map((d: any) => d.close);
     const { rsiData, latestRSI } = calculateRSI(closingPrices);
     const ma7Data = calculateSMA(closingPrices, 7);
     const ma20Data = calculateSMA(closingPrices, 20);
@@ -326,7 +354,7 @@ app.get("/api/stock-data", async (req, res) => {
     const arimaInput = closingPrices.slice(-60);
     const arimaForecast = computeARIMAForecast(arimaInput, 7);
 
-    const finalData = processedData.map((d, index) => ({
+    const finalData = processedData.map((d: any, index: any) => ({
       ...d,
       rsi: rsiData[index],
       ma7: ma7Data[index],
@@ -337,7 +365,8 @@ app.get("/api/stock-data", async (req, res) => {
     const prediction = computeTechnicalPrediction(finalData, arimaForecast);
 
     const latestPriceVal = finalData[finalData.length - 1].close;
-    const previousPriceVal = finalData[finalData.length - 2].close;
+    const previousPriceVal = finalData[finalData.length - 2]?.close || latestPriceVal;
+    
     const price1d = ((latestPriceVal - previousPriceVal) / previousPriceVal) * 100;
     const price5d = finalData.length >= 6 ? ((latestPriceVal - finalData[finalData.length - 6].close) / finalData[finalData.length - 6].close) * 100 : null;
     const price1m = finalData.length >= 22 ? ((latestPriceVal - finalData[finalData.length - 22].close) / finalData[finalData.length - 22].close) * 100 : null;
@@ -370,8 +399,8 @@ app.get("/api/stock-data", async (req, res) => {
       prediction,
     });
   } catch (error) {
-    console.error("Error fetching stock data:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error fetching historical stock data via Yahoo:", error);
+    res.status(500).json({ error: "Failed to fetch historical data. Symbol might be invalid." });
   }
 });
 
@@ -385,12 +414,10 @@ const safeNum = (v: string | undefined): number | null => {
   return isNaN(n) ? null : n;
 };
 
-// ── Dedicated endpoint: AV OVERVIEW fundamentals (cached 24h) ────────────────
+// ── Dedicated endpoint: Yahoo Finance fundamentals (cached 24h) ────────────────
 app.get("/api/fundamentals", async (req, res) => {
   const { symbol } = req.query;
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
   if (!symbol || typeof symbol !== "string") return res.status(400).json({ error: "Symbol required" });
-  if (!apiKey) return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY not configured" });
 
   const sym = symbol.trim().toUpperCase();
 
@@ -402,12 +429,8 @@ app.get("/api/fundamentals", async (req, res) => {
   }
 
   try {
-    console.log(`[fundamentals] Fetching OVERVIEW for ${sym}`);
-    const ovRes = await fetch(
-      `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${sym}&apikey=${apiKey}`
-    );
-    const ov: any = await ovRes.json();
-
+    console.log(`[fundamentals] Fetching OVERVIEW from Yahoo for ${sym}`);
+    
     let payload = {
       peRatio: null as number | null,
       forwardPE: null as number | null,
@@ -419,116 +442,142 @@ app.get("/api/fundamentals", async (req, res) => {
       week52Low: null as number | null,
       sector: null as string | null,
       industry: null as string | null,
+      earnings: null as any,
+      earningsTrend: null as any,
+      financialData: null as any,
+      defaultKeyStatistics: null as any,
       rateLimited: false
     };
 
-    if (ov["Note"] || ov["Information"]) {
-      console.warn(`[fundamentals] Rate-limited for ${sym}`);
-      payload.rateLimited = true;
-    } else {
-      payload.peRatio = safeNum(ov["TrailingPE"]);
-      payload.forwardPE = safeNum(ov["ForwardPE"]);
-      payload.divYield = safeNum(ov["DividendYield"]);
-      payload.marketCap = safeNum(ov["MarketCapitalization"]);
-      payload.beta = safeNum(ov["Beta"]);
-      payload.eps = safeNum(ov["EPS"]);
-      payload.week52High = safeNum(ov["52WeekHigh"]);
-      payload.week52Low = safeNum(ov["52WeekLow"]);
-      payload.sector = (ov["Sector"] && ov["Sector"] !== "None") ? ov["Sector"] : null;
-      payload.industry = (ov["Industry"] && ov["Industry"] !== "None") ? ov["Industry"] : null;
+    const yahooSym = sym.replace(".NSE", ".NS").replace(".BSE", ".BO");
+
+    const yf = await yahooFinance.quoteSummary(yahooSym, {
+      modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile', 'earnings', 'earningsTrend', 'financialData']
+    }) as any;
+
+    if (yf.summaryDetail) {
+      payload.peRatio = payload.peRatio ?? yf.summaryDetail.trailingPE ?? null;
+      payload.forwardPE = payload.forwardPE ?? yf.summaryDetail.forwardPE ?? null;
+      payload.divYield = payload.divYield ?? yf.summaryDetail.dividendYield ?? null;
+      payload.marketCap = payload.marketCap ?? yf.summaryDetail.marketCap ?? null;
+      payload.beta = payload.beta ?? yf.summaryDetail.beta ?? null;
+      payload.week52High = payload.week52High ?? yf.summaryDetail.fiftyTwoWeekHigh ?? null;
+      payload.week52Low = payload.week52Low ?? yf.summaryDetail.fiftyTwoWeekLow ?? null;
+    }
+    if (yf.defaultKeyStatistics) {
+      payload.eps = payload.eps ?? yf.defaultKeyStatistics.trailingEps ?? null;
+      payload.defaultKeyStatistics = yf.defaultKeyStatistics;
+    }
+    if (yf.assetProfile) {
+      payload.sector = payload.sector ?? yf.assetProfile.sector ?? null;
+      payload.industry = payload.industry ?? yf.assetProfile.industry ?? null;
+    }
+    if (yf.earnings) {
+      payload.earnings = yf.earnings;
+    }
+    if (yf.earningsTrend) {
+      payload.earningsTrend = yf.earningsTrend;
+    }
+    if (yf.financialData) {
+      payload.financialData = yf.financialData;
     }
 
-    // Fallback to Yahoo Finance for International/Indian stocks or missing data
-    if (!payload.peRatio && !payload.marketCap && !payload.eps) {
-      console.log(`[fundamentals] Alpha Vantage data empty for ${sym}, falling back to Yahoo Finance...`);
+    // -- Calculate Trailing Returns natively via 5-year chart (Monthly interval)
+    async function getTrailingReturns(stockSymbol: string) {
       try {
-        const yahooSym = sym.replace(".NSE", ".NS").replace(".BSE", ".BO");
+        const period1 = new Date();
+        period1.setFullYear(period1.getFullYear() - 5);
+        period1.setDate(period1.getDate() - 7);
 
-        const yf = await yahooFinance.quoteSummary(yahooSym, {
-          modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile']
-        }) as any;
+        const res: any = await yahooFinance.chart(stockSymbol, { period1, interval: '1mo' }, { validateResult: false });
+        const quotes = Array.isArray(res?.quotes) ? res.quotes : [];
+        if (quotes.length === 0) return null;
 
-        if (yf.summaryDetail) {
-          payload.peRatio = payload.peRatio ?? yf.summaryDetail.trailingPE ?? null;
-          payload.forwardPE = payload.forwardPE ?? yf.summaryDetail.forwardPE ?? null;
-          payload.divYield = payload.divYield ?? yf.summaryDetail.dividendYield ?? null;
-          payload.marketCap = payload.marketCap ?? yf.summaryDetail.marketCap ?? null;
-          payload.beta = payload.beta ?? yf.summaryDetail.beta ?? null;
-          payload.week52High = payload.week52High ?? yf.summaryDetail.fiftyTwoWeekHigh ?? null;
-          payload.week52Low = payload.week52Low ?? yf.summaryDetail.fiftyTwoWeekLow ?? null;
-        }
-        if (yf.defaultKeyStatistics) {
-          payload.eps = payload.eps ?? yf.defaultKeyStatistics.trailingEps ?? null;
-        }
-        if (yf.assetProfile) {
-          payload.sector = payload.sector ?? yf.assetProfile.sector ?? null;
-          payload.industry = payload.industry ?? yf.assetProfile.industry ?? null;
-        }
+        const currentPrice = quotes[quotes.length - 1].close;
+        const currentYear = new Date().getFullYear();
+        const lastYearQuotes = quotes.filter((q: any) => new Date(q.date).getFullYear() < currentYear);
+        const ytdStartPrice = lastYearQuotes.length > 0 ? lastYearQuotes[lastYearQuotes.length - 1].close : null;
 
-        // If we successfully pulled data from Yahoo, clear the rateLimited flag
-        // so the frontend doesn't show an error.
-        if (payload.marketCap || payload.peRatio) {
-          payload.rateLimited = false;
-        }
-      } catch (yErr: any) {
-        console.warn(`[fundamentals] Yahoo Finance fallback failed for ${sym}:`, yErr.message || yErr);
-        payload.sector = "ERROR: " + (yErr.message || "yd-err");
+        const oneYearAgoDate = new Date();
+        oneYearAgoDate.setFullYear(oneYearAgoDate.getFullYear() - 1);
+        const quote1y = quotes.find((q: any) => new Date(q.date) >= oneYearAgoDate) || quotes[quotes.length - 12];
+        const price1y = quote1y ? quote1y.close : null;
+
+        const threeYearAgoDate = new Date();
+        threeYearAgoDate.setFullYear(threeYearAgoDate.getFullYear() - 3);
+        const quote3y = quotes.find((q: any) => new Date(q.date) >= threeYearAgoDate) || quotes[quotes.length - 36];
+        const price3y = quote3y ? quote3y.close : null;
+
+        const price5y = quotes[0].close;
+
+        const calcReturn = (past: number | null) => past ? ((currentPrice - past) / past) * 100 : null;
+
+        return {
+          ytd: calcReturn(ytdStartPrice),
+          oneYear: calcReturn(price1y),
+          threeYear: calcReturn(price3y),
+          fiveYear: calcReturn(price5y),
+        };
+      } catch (err) {
+        return null;
       }
     }
+
+    const [stockReturns, sp500Returns] = await Promise.all([
+      getTrailingReturns(yahooSym),
+      getTrailingReturns('^GSPC')
+    ]);
+
+    (payload as any).trailingReturns = {
+      stock: stockReturns,
+      sp500: sp500Returns
+    };
 
     console.log(`[fundamentals] OK for ${sym}: PE=${payload.peRatio}, MCap=${payload.marketCap}, EPS=${payload.eps}`);
     overviewCache.set(sym, { data: payload, ts: Date.now() });
     res.json(payload);
-  } catch (err) {
-    console.error("[fundamentals] Error:", err);
-    res.status(500).json({ error: "Internal server error" });
+  } catch (err: any) {
+    console.warn(`[fundamentals] Error fetching for ${sym}:`, err.message || err);
+    res.status(500).json({ error: "Internal server error fetching fundamentals" });
   }
 });
 
-// ── /api/realtime-quote — live price only (GLOBAL_QUOTE) ─────────────────────
+// ── /api/realtime-quote — live price only (Yahoo Finance Quote) ─────────────────────
 app.get("/api/realtime-quote", async (req, res) => {
   const { symbol } = req.query;
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
   if (!symbol || typeof symbol !== "string") return res.status(400).json({ error: "Symbol is required" });
-  if (!apiKey) return res.status(500).json({ error: "ALPHA_VANTAGE_API_KEY is not configured" });
 
   const cleanSymbol = symbol.trim().toUpperCase();
+  const yahooSym = cleanSymbol.replace(".NSE", ".NS").replace(".BSE", ".BO");
+
   try {
-    console.log(`[realtime-quote] Fetching GLOBAL_QUOTE for: ${cleanSymbol}`);
-    const quoteRes = await fetch(
-      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${cleanSymbol}&apikey=${apiKey}`
-    );
-    const quoteData: any = await quoteRes.json();
-
-    if (quoteData["Note"] || quoteData["Information"]) {
-      return res.status(429).json({ error: "Alpha Vantage rate limit reached. Please wait a moment and try again." });
-    }
-
-    const q = quoteData["Global Quote"];
-    if (!q || !q["05. price"]) {
+    console.log(`[realtime-quote] Fetching Yahoo Quote for: ${cleanSymbol} (mapped as ${yahooSym})`);
+    const q = await yahooFinance.quote(yahooSym);
+    
+    if (!q || !q.regularMarketPrice) {
       return res.status(404).json({ error: `No live quote available for "${cleanSymbol}".` });
     }
 
-    const price = parseFloat(q["05. price"]);
-    const volume = parseInt(q["06. volume"]);
+    const price = q.regularMarketPrice;
+    const volume = q.regularMarketVolume || 0;
 
     res.json({
-      symbol: q["01. symbol"] || cleanSymbol,
+      symbol: q.symbol || cleanSymbol,
       currencySymbol: getCurrencySymbol(cleanSymbol),
       price,
-      open: parseFloat(q["02. open"]),
-      high: parseFloat(q["03. high"]),
-      low: parseFloat(q["04. low"]),
-      previousClose: parseFloat(q["08. previous close"]),
-      change: parseFloat(q["09. change"]),
-      changePercent: q["10. change percent"]?.replace("%", "") ?? "0",
+      open: q.regularMarketOpen || price,
+      high: q.regularMarketDayHigh || price,
+      low: q.regularMarketDayLow || price,
+      previousClose: q.regularMarketPreviousClose || price,
+      change: q.regularMarketChange || 0,
+      changePercent: q.regularMarketChangePercent?.toFixed(4) ?? "0",
       volume,
-      latestTradingDay: q["07. latest trading day"] || "",
+      latestTradingDay: (q.regularMarketTime ? new Date(q.regularMarketTime).toISOString().split('T')[0] : ""),
       liquidity: price * volume,
     });
   } catch (error) {
-    console.error("Error fetching realtime quote:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error fetching realtime quote via Yahoo:", error);
+    res.status(500).json({ error: "Internal server error fetching live quote" });
   }
 });
 
@@ -540,12 +589,26 @@ app.get("/api/intraday", async (req, res) => {
   }
 
   const cleanSymbol = symbol.trim().toUpperCase();
+  const yahooSym = cleanSymbol.replace(".NSE", ".NS").replace(".BSE", ".BO");
 
   try {
-    console.log(`[intraday] Fetching 1D chart for: ${cleanSymbol}`);
+    console.log(`[intraday] Fetching 1D chart for: ${cleanSymbol} (mapped as ${yahooSym})`);
 
-    const yahooData = await getYahooIntraday(cleanSymbol);
+    const cached = intradayCache.get(cleanSymbol);
+    if (cached && Date.now() - cached.ts < INTRADAY_CACHE_TTL_MS) {
+      const lastDayStr = cached.data[cached.data.length - 1].date.split("T")[0];
+      return res.json({
+        symbol: cleanSymbol,
+        currencySymbol: getCurrencySymbol(cleanSymbol),
+        data: cached.data.filter((q) => q.date.startsWith(lastDayStr)),
+        tradingDay: lastDayStr,
+        source: "cache",
+      });
+    }
+
+    const yahooData = await getYahooIntraday(yahooSym);
     if (yahooData.length > 0) {
+      intradayCache.set(cleanSymbol, { data: yahooData, ts: Date.now() });
       const lastDayStr = yahooData[yahooData.length - 1].date.split("T")[0];
       return res.json({
         symbol: cleanSymbol,
@@ -553,18 +616,6 @@ app.get("/api/intraday", async (req, res) => {
         data: yahooData.filter((q) => q.date.startsWith(lastDayStr)),
         tradingDay: lastDayStr,
         source: "yahoo",
-      });
-    }
-
-    const alphaData = await getAlphaIntraday(cleanSymbol, process.env.ALPHA_VANTAGE_API_KEY);
-    if (alphaData.length > 0) {
-      const lastDayStr = alphaData[alphaData.length - 1].date.split("T")[0];
-      return res.json({
-        symbol: cleanSymbol,
-        currencySymbol: getCurrencySymbol(cleanSymbol),
-        data: alphaData.filter((q) => q.date.startsWith(lastDayStr)),
-        tradingDay: lastDayStr,
-        source: "alpha-vantage",
       });
     }
 
@@ -592,29 +643,35 @@ function normalizeIntradayPoints(points: IntradayPoint[]): IntradayPoint[] {
     .filter((q) =>
       q &&
       q.date &&
-      Number.isFinite(q.open) &&
-      Number.isFinite(q.high) &&
-      Number.isFinite(q.low) &&
       Number.isFinite(q.close)
     )
+    .map((q) => ({
+      ...q,
+      open: Number.isFinite(q.open) ? q.open : q.close,
+      high: Number.isFinite(q.high) ? q.high : q.close,
+      low: Number.isFinite(q.low) ? q.low : q.close,
+      volume: Number.isFinite(q.volume) ? q.volume : 0,
+    }))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 async function getYahooIntraday(symbol: string): Promise<IntradayPoint[]> {
   try {
-    const result: any = await yahooFinance.chart(
+    const period2 = new Date();
+    const period1 = new Date(Date.now() - 1000 * 60 * 60 * 24 * 10);
+    const rangeResult: any = await yahooFinance.chart(
       symbol,
       {
-        range: "5d",
+        period1,
+        period2,
         interval: "5m",
-        includePrePost: false,
+        includePrePost: true,
       },
       { validateResult: false }
     );
-
-    const quotes = Array.isArray(result?.quotes) ? result.quotes : [];
-    return normalizeIntradayPoints(
-      quotes.map((q: any) => ({
+    const rangeQuotes = Array.isArray(rangeResult?.quotes) ? rangeResult.quotes : [];
+    const rangeNormalized = normalizeIntradayPoints(
+      rangeQuotes.map((q: any) => ({
         date: q.date instanceof Date ? q.date.toISOString() : new Date(q.date).toISOString(),
         open: Number(q.open),
         high: Number(q.high),
@@ -623,43 +680,48 @@ async function getYahooIntraday(symbol: string): Promise<IntradayPoint[]> {
         volume: Number(q.volume ?? 0),
       }))
     );
+    if (rangeNormalized.length > 0) return rangeNormalized;
+
+    return getYahooChartDirect(symbol);
   } catch (error: any) {
     console.warn(`[intraday] Yahoo intraday failed for ${symbol}:`, error.message || error);
     return [];
   }
 }
 
-async function getAlphaIntraday(symbol: string, apiKey?: string): Promise<IntradayPoint[]> {
-  if (!apiKey) return [];
-
+async function getYahooChartDirect(symbol: string): Promise<IntradayPoint[]> {
   try {
-    const response = await fetch(
-      `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${encodeURIComponent(symbol)}&interval=5min&outputsize=full&apikey=${apiKey}`
-    );
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=5d&includePrePost=true`;
+    const response = await fetch(url);
+    if (!response.ok) return [];
     const payload: any = await response.json();
+    const result = payload?.chart?.result?.[0];
+    if (!result) return [];
 
-    if (payload?.Note || payload?.Information || payload?.ErrorMessage) {
-      return [];
-    }
+    const timestamps: number[] = result.timestamp || [];
+    const quote = result.indicators?.quote?.[0] || {};
+    const opens: (number | null)[] = quote.open || [];
+    const highs: (number | null)[] = quote.high || [];
+    const lows: (number | null)[] = quote.low || [];
+    const closes: (number | null)[] = quote.close || [];
+    const volumes: (number | null)[] = quote.volume || [];
 
-    const series = payload?.["Time Series (5min)"];
-    if (!series || typeof series !== "object") return [];
+    const points: IntradayPoint[] = timestamps.map((ts, i) => ({
+      date: new Date(ts * 1000).toISOString(),
+      open: Number(opens[i]),
+      high: Number(highs[i]),
+      low: Number(lows[i]),
+      close: Number(closes[i]),
+      volume: Number(volumes[i] ?? 0),
+    }));
 
-    return normalizeIntradayPoints(
-      Object.entries(series).map(([timestamp, values]: [string, any]) => ({
-        date: new Date(timestamp.replace(" ", "T")).toISOString(),
-        open: Number(values["1. open"]),
-        high: Number(values["2. high"]),
-        low: Number(values["3. low"]),
-        close: Number(values["4. close"]),
-        volume: Number(values["5. volume"] ?? 0),
-      }))
-    );
+    return normalizeIntradayPoints(points);
   } catch (error: any) {
-    console.warn(`[intraday] Alpha Vantage intraday failed for ${symbol}:`, error.message || error);
+    console.warn(`[intraday] Yahoo direct fetch failed for ${symbol}:`, error.message || error);
     return [];
   }
 }
+
 
 // Vite middleware for development
 if (process.env.NODE_ENV !== "production") {

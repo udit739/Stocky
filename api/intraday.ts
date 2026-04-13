@@ -3,6 +3,9 @@ import YahooFinance from "yahoo-finance2";
 import fetch from "node-fetch";
 const yahooFinance = new YahooFinance();
 
+const INTRADAY_CACHE_TTL_MS = 60 * 1000;
+const intradayCache = new Map<string, { data: IntradayPoint[]; ts: number }>();
+
 function getCurrencySymbol(symbol: string): string {
   const clean = symbol.trim().toUpperCase();
   if (clean.endsWith(".BSE") || clean.endsWith(".NSE")) return "₹";
@@ -35,8 +38,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log(`[intraday] Fetching 1D chart for: ${cleanSymbol}`);
 
+    const alphaResult = await getAlphaIntraday(cleanSymbol, process.env.ALPHA_VANTAGE_API_KEY);
+    if (alphaResult.data.length > 0) {
+      intradayCache.set(cleanSymbol, { data: alphaResult.data, ts: Date.now() });
+      const lastDayStr = alphaResult.data[alphaResult.data.length - 1].date.split("T")[0];
+      return res.json({
+        symbol: cleanSymbol,
+        currencySymbol: getCurrencySymbol(cleanSymbol),
+        data: alphaResult.data.filter((q) => q.date.startsWith(lastDayStr)),
+        tradingDay: lastDayStr,
+        source: "alpha-vantage",
+      });
+    }
+
+    const cached = intradayCache.get(cleanSymbol);
+    if (alphaResult.reason === "rate limit reached" && cached && Date.now() - cached.ts < INTRADAY_CACHE_TTL_MS) {
+      const lastDayStr = cached.data[cached.data.length - 1].date.split("T")[0];
+      return res.json({
+        symbol: cleanSymbol,
+        currencySymbol: getCurrencySymbol(cleanSymbol),
+        data: cached.data.filter((q) => q.date.startsWith(lastDayStr)),
+        tradingDay: lastDayStr,
+        source: "cache",
+        warning: "Alpha Vantage rate limit reached; serving cached intraday data.",
+      });
+    }
+
     const yahooData = await getYahooIntraday(cleanSymbol);
     if (yahooData.length > 0) {
+      intradayCache.set(cleanSymbol, { data: yahooData, ts: Date.now() });
       const lastDayStr = yahooData[yahooData.length - 1].date.split("T")[0];
       return res.json({
         symbol: cleanSymbol,
@@ -47,20 +77,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const alphaData = await getAlphaIntraday(cleanSymbol, process.env.ALPHA_VANTAGE_API_KEY);
-    if (alphaData.length > 0) {
-      const lastDayStr = alphaData[alphaData.length - 1].date.split("T")[0];
-      return res.json({
-        symbol: cleanSymbol,
-        currencySymbol: getCurrencySymbol(cleanSymbol),
-        data: alphaData.filter((q) => q.date.startsWith(lastDayStr)),
-        tradingDay: lastDayStr,
-        source: "alpha-vantage",
-      });
-    }
-
     return res.status(404).json({
-      error: `No intraday data available for ${cleanSymbol}. Try a Yahoo-format symbol such as RELIANCE.NS, TCS.NS, or AAPL.`,
+      error: `No intraday data available for ${cleanSymbol}. ${alphaResult.reason ? `Alpha Vantage: ${alphaResult.reason}. ` : ""}Try a Yahoo-format symbol such as RELIANCE.NS, TCS.NS, or AAPL.`,
     });
   } catch (error: any) {
     console.error("Error fetching intraday data:", error.message || error);
@@ -82,11 +100,15 @@ function normalizePoints(points: IntradayPoint[]): IntradayPoint[] {
     .filter((q) =>
       q &&
       q.date &&
-      Number.isFinite(q.open) &&
-      Number.isFinite(q.high) &&
-      Number.isFinite(q.low) &&
       Number.isFinite(q.close)
     )
+    .map((q) => ({
+      ...q,
+      open: Number.isFinite(q.open) ? q.open : q.close,
+      high: Number.isFinite(q.high) ? q.high : q.close,
+      low: Number.isFinite(q.low) ? q.low : q.close,
+      volume: Number.isFinite(q.volume) ? q.volume : 0,
+    }))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
@@ -97,13 +119,13 @@ async function getYahooIntraday(symbol: string): Promise<IntradayPoint[]> {
       {
         range: "5d",
         interval: "5m",
-        includePrePost: false,
+        includePrePost: true,
       },
       { validateResult: false }
     );
 
     const quotes = Array.isArray(result?.quotes) ? result.quotes : [];
-    return normalizePoints(
+    const normalized = normalizePoints(
       quotes.map((q: any) => ({
         date: q.date instanceof Date ? q.date.toISOString() : new Date(q.date).toISOString(),
         open: Number(q.open),
@@ -113,14 +135,82 @@ async function getYahooIntraday(symbol: string): Promise<IntradayPoint[]> {
         volume: Number(q.volume ?? 0),
       }))
     );
+    if (normalized.length > 0) return normalized;
+
+    // Fallback: explicit date range (more resilient for some tickers)
+    const period2 = new Date();
+    const period1 = new Date(Date.now() - 1000 * 60 * 60 * 24 * 10);
+    const rangeResult: any = await yahooFinance.chart(
+      symbol,
+      {
+        period1,
+        period2,
+        interval: "5m",
+        includePrePost: true,
+      },
+      { validateResult: false }
+    );
+    const rangeQuotes = Array.isArray(rangeResult?.quotes) ? rangeResult.quotes : [];
+    const rangeNormalized = normalizePoints(
+      rangeQuotes.map((q: any) => ({
+        date: q.date instanceof Date ? q.date.toISOString() : new Date(q.date).toISOString(),
+        open: Number(q.open),
+        high: Number(q.high),
+        low: Number(q.low),
+        close: Number(q.close),
+        volume: Number(q.volume ?? 0),
+      }))
+    );
+    if (rangeNormalized.length > 0) return rangeNormalized;
+
+    // Fallback: direct Yahoo chart HTTP fetch
+    return getYahooChartDirect(symbol);
   } catch (error: any) {
     console.warn(`[intraday] Yahoo intraday failed for ${symbol}:`, error.message || error);
     return [];
   }
 }
 
-async function getAlphaIntraday(symbol: string, apiKey?: string): Promise<IntradayPoint[]> {
-  if (!apiKey) return [];
+async function getYahooChartDirect(symbol: string): Promise<IntradayPoint[]> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=5d&includePrePost=true`;
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    const payload: any = await response.json();
+    const result = payload?.chart?.result?.[0];
+    if (!result) return [];
+
+    const timestamps: number[] = result.timestamp || [];
+    const quote = result.indicators?.quote?.[0] || {};
+    const opens: (number | null)[] = quote.open || [];
+    const highs: (number | null)[] = quote.high || [];
+    const lows: (number | null)[] = quote.low || [];
+    const closes: (number | null)[] = quote.close || [];
+    const volumes: (number | null)[] = quote.volume || [];
+
+    const points: IntradayPoint[] = timestamps.map((ts, i) => ({
+      date: new Date(ts * 1000).toISOString(),
+      open: Number(opens[i]),
+      high: Number(highs[i]),
+      low: Number(lows[i]),
+      close: Number(closes[i]),
+      volume: Number(volumes[i] ?? 0),
+    }));
+
+    return normalizePoints(points);
+  } catch (error: any) {
+    console.warn(`[intraday] Yahoo direct fetch failed for ${symbol}:`, error.message || error);
+    return [];
+  }
+}
+
+type IntradayFetchResult = {
+  data: IntradayPoint[];
+  reason?: string;
+};
+
+async function getAlphaIntraday(symbol: string, apiKey?: string): Promise<IntradayFetchResult> {
+  if (!apiKey) return { data: [], reason: "API key not configured" };
 
   try {
     const response = await fetch(
@@ -128,25 +218,32 @@ async function getAlphaIntraday(symbol: string, apiKey?: string): Promise<Intrad
     );
     const payload: any = await response.json();
 
-    if (payload?.Note || payload?.Information || payload?.ErrorMessage) {
-      return [];
+    if (payload?.Note || payload?.Information) {
+      return { data: [], reason: "rate limit reached" };
+    }
+    if (payload?.ErrorMessage) {
+      return { data: [], reason: "symbol unsupported by Alpha Vantage" };
     }
 
     const series = payload?.["Time Series (5min)"];
-    if (!series || typeof series !== "object") return [];
+    if (!series || typeof series !== "object") {
+      return { data: [], reason: "missing time series data" };
+    }
 
-    return normalizePoints(
-      Object.entries(series).map(([timestamp, values]: [string, any]) => ({
-        date: new Date(timestamp.replace(" ", "T")).toISOString(),
-        open: Number(values["1. open"]),
-        high: Number(values["2. high"]),
-        low: Number(values["3. low"]),
-        close: Number(values["4. close"]),
-        volume: Number(values["5. volume"] ?? 0),
-      }))
-    );
+    return {
+      data: normalizePoints(
+        Object.entries(series).map(([timestamp, values]: [string, any]) => ({
+          date: new Date(timestamp.replace(" ", "T")).toISOString(),
+          open: Number(values["1. open"]),
+          high: Number(values["2. high"]),
+          low: Number(values["3. low"]),
+          close: Number(values["4. close"]),
+          volume: Number(values["5. volume"] ?? 0),
+        }))
+      ),
+    };
   } catch (error: any) {
     console.warn(`[intraday] Alpha Vantage intraday failed for ${symbol}:`, error.message || error);
-    return [];
+    return { data: [], reason: "request failed" };
   }
 }
