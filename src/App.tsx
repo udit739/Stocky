@@ -718,7 +718,7 @@ export default function App() {
               animate={{ opacity: 10 }}
               className="mt-20 text-center space-y-6"
             >
-              <p className="text-zinc-400 font-semibold">Enter a ticker symbol above to get started.</p>
+              <p className="text-cyan-200 font-semibold">Enter a ticker symbol above to get started.</p>
             </motion.div>
           )}
 
@@ -729,7 +729,7 @@ export default function App() {
               animate={{ opacity: 10 }}
               className="mt-20 text-center space-y-6"
             >
-              <p className="text-zinc-900 font-semibold">Enter a ticker symbol above to load the intraday chart.</p>
+              <p className="text-cyan-100 font-semibold">Enter a ticker symbol above to load the intraday chart.</p>
             </motion.div>
           )}
 
@@ -740,7 +740,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               className="mt-20 text-center space-y-6"
             >
-              <p className="text-white font-semibold">Enter two ticker symbols above to compare them.</p>
+              <p className="text-cyan-200 font-semibold">Enter two ticker symbols above to compare them.</p>
             </motion.div>
           )}
 
