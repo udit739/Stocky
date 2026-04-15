@@ -146,25 +146,25 @@ const playAlertSound = () => {
     const ctx = new AudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    
+
     osc.connect(gain);
     gain.connect(ctx.destination);
-    
+
     osc.type = 'sine';
     const now = ctx.currentTime;
-    
+
     // First beep
     osc.frequency.setValueAtTime(880, now);
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
     gain.gain.linearRampToValueAtTime(0, now + 0.15);
-    
+
     // Second beep
     osc.frequency.setValueAtTime(880, now + 0.2);
     gain.gain.setValueAtTime(0, now + 0.2);
     gain.gain.linearRampToValueAtTime(0.5, now + 0.25);
     gain.gain.linearRampToValueAtTime(0, now + 0.35);
-    
+
     osc.start(now);
     osc.stop(now + 0.4);
   } catch (e) {
@@ -371,9 +371,9 @@ export default function App() {
             initial={{ opacity: 0, y: -10, rotateX: -10, letterSpacing: '0.55em' }}
             animate={{ opacity: 1, y: 0, rotateX: 0, letterSpacing: '-0.04em' }}
             transition={{
-              opacity:       { delay: 0.1, duration: 0.4 },
-              y:             { delay: 0.1, type: 'spring', damping: 20 },
-              rotateX:       { delay: 0.1, type: 'spring', damping: 20 },
+              opacity: { delay: 0.1, duration: 0.4 },
+              y: { delay: 0.1, type: 'spring', damping: 20 },
+              rotateX: { delay: 0.1, type: 'spring', damping: 20 },
               letterSpacing: { delay: 0.15, duration: 0.9, ease: [0.22, 1, 0.36, 1] },
             }}
             className="text-5xl md:text-7xl font-black text-white mb-6 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
@@ -403,7 +403,7 @@ export default function App() {
                 onClick={() => setIsSidebarOpen(false)}
                 className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
               />
-              
+
               {/* Sidebar */}
               <motion.div
                 initial={{ x: '-100%' }}
@@ -421,7 +421,7 @@ export default function App() {
 
                 <div className="flex flex-col gap-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600 mb-2">Navigation</p>
-                  
+
                   <button
                     onClick={() => { switchMode('single'); setIsSidebarOpen(false); }}
                     className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 w-full ${mode === 'single'
@@ -585,8 +585,8 @@ export default function App() {
                   }
                   whileTap={{ scale: 0.94 }}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest border transition-all shadow-lg ${watchlist.includes(stockData.symbol)
-                      ? 'bg-[#ffd580]/15 text-[#ffd580] border-[#ffd580]/30 shadow-[0_0_20px_rgba(255,213,128,0.2)]'
-                      : 'bg-[#1a1919]/80 text-zinc-400 border-white/10 hover:text-[#ffd580] hover:border-[#ffd580]/30 hover:shadow-[0_0_15px_rgba(255,213,128,0.15)]'
+                    ? 'bg-[#ffd580]/15 text-[#ffd580] border-[#ffd580]/30 shadow-[0_0_20px_rgba(255,213,128,0.2)]'
+                    : 'bg-[#1a1919]/80 text-zinc-400 border-white/10 hover:text-[#ffd580] hover:border-[#ffd580]/30 hover:shadow-[0_0_15px_rgba(255,213,128,0.15)]'
                     }`}
                 >
                   <Star
@@ -648,8 +648,8 @@ export default function App() {
                   }
                   whileTap={{ scale: 0.94 }}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest border transition-all shadow-lg ${watchlist.includes(intradaySymbol)
-                      ? 'bg-[#ffd580]/15 text-[#ffd580] border-[#ffd580]/30 shadow-[0_0_20px_rgba(255,213,128,0.2)]'
-                      : 'bg-[#1a1919]/80 text-zinc-400 border-white/10 hover:text-[#ffd580] hover:border-[#ffd580]/30 hover:shadow-[0_0_15px_rgba(255,213,128,0.15)]'
+                    ? 'bg-[#ffd580]/15 text-[#ffd580] border-[#ffd580]/30 shadow-[0_0_20px_rgba(255,213,128,0.2)]'
+                    : 'bg-[#1a1919]/80 text-zinc-400 border-white/10 hover:text-[#ffd580] hover:border-[#ffd580]/30 hover:shadow-[0_0_15px_rgba(255,213,128,0.15)]'
                     }`}
                 >
                   <Star
@@ -718,7 +718,7 @@ export default function App() {
               animate={{ opacity: 10 }}
               className="mt-20 text-center space-y-6"
             >
-              <p className="text-black font-semibold">Enter a ticker symbol above to get started.</p>
+              <p className="text-zinc-400 font-semibold">Enter a ticker symbol above to get started.</p>
             </motion.div>
           )}
 
@@ -729,7 +729,7 @@ export default function App() {
               animate={{ opacity: 10 }}
               className="mt-20 text-center space-y-6"
             >
-              <p className="text-black font-semibold">Enter a ticker symbol above to load the intraday chart.</p>
+              <p className="text-zinc-900 font-semibold">Enter a ticker symbol above to load the intraday chart.</p>
             </motion.div>
           )}
 
@@ -740,7 +740,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               className="mt-20 text-center space-y-6"
             >
-              <p className="text-black font-semibold">Enter two ticker symbols above to compare them.</p>
+              <p className="text-white font-semibold">Enter two ticker symbols above to compare them.</p>
             </motion.div>
           )}
 
