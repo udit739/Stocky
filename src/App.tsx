@@ -137,69 +137,7 @@ function CompareSearchBar({ onCompare, isLoading }: CompareSearchBarProps) {
   );
 }
 
-const TICKER_CURRENCIES = [
-  { symbol: '.', color: '#8ff5ff' },
-  { symbol: '', color: '#ac8aff' },
-  { symbol: '.', color: '#ffd580' },
-  { symbol: '.', color: '#ff8c8c' },
-  { symbol: '.', color: '#80ffb4' },
-  { symbol: '.', color: '#ffb347' },
-];
 
-function TickerParticles() {
-  const particles = React.useMemo(() => {
-    return [...Array(20)].map((_, i) => {
-      const cur = TICKER_CURRENCIES[Math.floor(Math.random() * TICKER_CURRENCIES.length)];
-      return {
-        id: i,
-        symbol: cur.symbol,
-        size: Math.random() * 0.7 + 0.5, // rem
-        color: cur.color,
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
-        xOffset: Math.random() > 0.5 ? 40 : -40,
-        yOffset: Math.random() > 0.5 ? 20 : -20,
-        duration: Math.random() * 6 + 4,
-        delay: Math.random() * 2,
-        rotate: Math.random() * 360,
-      };
-    });
-  }, []);
-
-  return (
-    <div className="absolute inset-0 pointer-events-none z-20">
-      {particles.map((p) => (
-        <motion.span
-          key={p.id}
-          className="absolute font-black select-none"
-          style={{
-            fontSize: `${p.size}rem`,
-            color: p.color,
-            left: p.left,
-            top: p.top,
-            textShadow: `0 0 12px ${p.color}`,
-          }}
-          initial={{ rotate: p.rotate }}
-          animate={{
-            x: [0, p.xOffset],
-            y: [0, p.yOffset],
-            rotate: [p.rotate, p.rotate + 90],
-            opacity: [0, 0.75, 0],
-          }}
-          transition={{
-            duration: p.duration,
-            repeat: Infinity,
-            repeatType: 'reverse',
-            ease: 'easeInOut',
-            delay: p.delay,
-          }}
-        >
-          {p.symbol}
-        </motion.span>
-      ))}
-    </div>
-  );
-}
 
 const playAlertSound = () => {
   try {
@@ -444,38 +382,6 @@ export default function App() {
             STOCK<span className="text-transparent bg-clip-text bg-gradient-to-br from-[#8ff5ff] to-[#00deec]">Y</span>
           </motion.h1>
         </motion.header>
-        {/* ── Marquee ticker strip ── */}
-        <div className="relative overflow-hidden py-3 mb-10 rounded-2xl border border-white/10" style={{ background: '#000000' }}>
-          <TickerParticles />
-          {/* Scrolling track — two identical halves for seamless loop */}
-          <div
-            className="relative z-10 inline-flex whitespace-nowrap animate-[marqueeScroll_13s_linear_infinite] cursor-default select-none"
-          >
-            {[0, 1].map(set => (
-              <span key={set} className="inline-flex items-center">
-                {['STOCK', 'STOCK', 'STOCK', 'STOCK', 'STOCK', 'STOCK', 'STOCK', 'STOCK'].map((word, i) => (
-                  <span key={i} className="inline-flex items-center gap-6 mr-10">
-                    <span
-                      className="font-black text-2xl md:text-3xl"
-                      style={{
-                        letterSpacing: '0.35em',
-                        fontFamily: "'Space Grotesk', sans-serif",
-                        color: i % 2 === 0 ? '#16e616ff' : '#ce27f0ff',
-                        textShadow: i % 2 === 0
-                          ? '0 0 18px rgba(143,245,255,0.35)'
-                          : '0 0 18px rgba(199, 4, 4, 0.35)',
-                        opacity: 0.75,
-                      }}
-                    >
-                      {word}<span style={{ color: i % 2 === 0 ? '#75f071ff' : '#e54edeff' }}>Y</span>
-                    </span>
-                    <span className="text-white/20 font-bold select-none">✦</span>
-                  </span>
-                ))}
-              </span>
-            ))}
-          </div>
-        </div>
 
         {/* ── Hamburger Menu Button ── */}
         <button

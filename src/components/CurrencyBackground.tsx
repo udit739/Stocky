@@ -116,11 +116,9 @@ function FloatingSymbol({ particle: p }: { particle: Particle }) {
         willChange: 'transform, opacity',
         animation: `
           currencyFloat ${p.duration}s ${p.delay}s linear infinite,
-          currencyDrift  ${p.duration * 0.9}s ${p.delay}s ease-in-out infinite alternate,
-          currencyRotate ${p.duration * 0.5}s ${p.delay}s linear infinite
+          currencyDrift  ${p.duration * 10}s ${p.delay}s ease-in-out infinite alternate
         `,
         '--drift': `${p.drift}px`,
-        '--rotate-dir': `${360 * p.rotateSpeed}deg`,
       } as React.CSSProperties}
     >
       {p.symbol}
