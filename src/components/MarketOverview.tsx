@@ -102,7 +102,7 @@ function SectorTreemap({ sectors }: { sectors: SectorItem[] }) {
             style={{ background: bg, gridRow: s.weight > 15 ? 'span 2' : undefined }}
             title={`${s.name}: ${fmtPct(s.changePct)}`}
           >
-            <span className={`${fontSize} font-black text-white text-center leading-tight`}>{s.name}</span>
+            <span className={`${fontSize} font-black text-white text-center leading-tight`}>{s.name} <span className="text-white/50 text-[10px] block font-bold">{s.etf}</span></span>
             <ChangeCell v={s.changePct} />
           </div>
         );
@@ -251,7 +251,7 @@ export const MarketOverview: React.FC = () => {
                       >
                         <div className="flex items-center gap-2">
                           <div className="flex-1 max-w-[120px]">
-                            <span className="text-xs font-bold text-white block truncate">{s.name}</span>
+                            <span className="text-xs font-bold text-white block truncate">{s.name} <span className="text-zinc-500 font-normal">({s.etf})</span></span>
                             <div className="h-1 mt-1 bg-white/10 rounded-full overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-gradient-to-r from-[#8ff5ff] to-[#ac8aff]"
