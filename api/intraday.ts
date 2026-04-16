@@ -133,11 +133,14 @@ function normalizePoints(points: IntradayPoint[]): IntradayPoint[] {
 
 async function getYahooIntraday(symbol: string): Promise<IntradayPoint[]> {
   try {
+    const period2 = new Date();
+    const period1 = new Date(Date.now() - 1000 * 60 * 60 * 24 * 5);
     const result: any = await yahooFinance.chart(
       symbol,
       {
-        range: "5d",
-        interval: "5m",
+        period1,
+        period2,
+        interval: "5m" as any,
         includePrePost: true,
       },
       { validateResult: false }
@@ -155,32 +158,6 @@ async function getYahooIntraday(symbol: string): Promise<IntradayPoint[]> {
       }))
     );
     if (normalized.length > 0) return normalized;
-
-    // Fallback: explicit date range (more resilient for some tickers)
-    const period2 = new Date();
-    const period1 = new Date(Date.now() - 1000 * 60 * 60 * 24 * 10);
-    const rangeResult: any = await yahooFinance.chart(
-      symbol,
-      {
-        period1,
-        period2,
-        interval: "5m",
-        includePrePost: true,
-      },
-      { validateResult: false }
-    );
-    const rangeQuotes = Array.isArray(rangeResult?.quotes) ? rangeResult.quotes : [];
-    const rangeNormalized = normalizePoints(
-      rangeQuotes.map((q: any) => ({
-        date: q.date instanceof Date ? q.date.toISOString() : new Date(q.date).toISOString(),
-        open: Number(q.open),
-        high: Number(q.high),
-        low: Number(q.low),
-        close: Number(q.close),
-        volume: Number(q.volume ?? 0),
-      }))
-    );
-    if (rangeNormalized.length > 0) return rangeNormalized;
 
     // Fallback: direct Yahoo chart HTTP fetch
     return getYahooChartDirect(symbol);
