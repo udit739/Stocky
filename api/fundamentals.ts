@@ -183,8 +183,70 @@ function buildPayload(symbol: string, yfData: any): any {
     },
     earnings:       earningsPayload,
     earningsTrend:  earningsTrendPayload,
-    trailingReturns: null, // Not available without premium Yahoo data
+    trailingReturns: null as any, // populated separately in handler
   };
+}
+
+// ─── Trailing Returns (YTD / 1Y / 3Y / 5Y) from Yahoo chart ──────────────────
+// Exactly mirrors the logic in server.ts so both environments produce the same data.
+
+async function getTrailingReturns(yahooSym: string): Promise<{
+  ytd: number | null;
+  oneYear: number | null;
+  threeYear: number | null;
+  fiveYear: number | null;
+} | null> {
+  try {
+    const period1 = new Date();
+    period1.setFullYear(period1.getFullYear() - 5);
+    period1.setDate(period1.getDate() - 7);
+
+    const result: any = await yahooFinance.chart(
+      yahooSym,
+      { period1, interval: "1mo" as any },
+      { validateResult: false }
+    );
+
+    const quotes: any[] = Array.isArray(result?.quotes) ? result.quotes : [];
+    if (quotes.length === 0) return null;
+
+    const currentPrice: number = quotes[quotes.length - 1].close;
+    const currentYear = new Date().getFullYear();
+
+    // YTD: price at end of last year
+    const lastYearQuotes = quotes.filter((q: any) => new Date(q.date).getFullYear() < currentYear);
+    const ytdStartPrice: number | null = lastYearQuotes.length > 0
+      ? lastYearQuotes[lastYearQuotes.length - 1].close
+      : null;
+
+    // 1-Year
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const quote1y = quotes.find((q: any) => new Date(q.date) >= oneYearAgo) ?? quotes[quotes.length - 12];
+    const price1y: number | null = quote1y?.close ?? null;
+
+    // 3-Year
+    const threeYearAgo = new Date();
+    threeYearAgo.setFullYear(threeYearAgo.getFullYear() - 3);
+    const quote3y = quotes.find((q: any) => new Date(q.date) >= threeYearAgo) ?? quotes[quotes.length - 36];
+    const price3y: number | null = quote3y?.close ?? null;
+
+    // 5-Year (oldest available)
+    const price5y: number = quotes[0].close;
+
+    const calcReturn = (past: number | null): number | null =>
+      past ? ((currentPrice - past) / past) * 100 : null;
+
+    return {
+      ytd:       calcReturn(ytdStartPrice),
+      oneYear:   calcReturn(price1y),
+      threeYear: calcReturn(price3y),
+      fiveYear:  calcReturn(price5y),
+    };
+  } catch (err: any) {
+    console.warn(`[fundamentals] getTrailingReturns failed for ${yahooSym}:`, err.message || err);
+    return null;
+  }
 }
 
 // ─── Main Handler ─────────────────────────────────────────────────────────────
@@ -210,13 +272,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // ── 1. Try yahoo-finance2 library ────────────────────────────────────
-    let raw = await fetchYahooFundamentals(sym);
+    const yahooSym = toYahooSymbol(sym);
 
-    // ── 2. Fallback to direct Yahoo HTTP ─────────────────────────────────
-    if (!raw) {
-      raw = await fetchYahooFundamentalsDirect(sym);
-    }
+    // ── Fetch quoteSummary + trailing returns in parallel ─────────────────
+    const [raw, stockReturns, sp500Returns] = await Promise.all([
+      fetchYahooFundamentals(sym).then(r => r ?? fetchYahooFundamentalsDirect(sym)),
+      getTrailingReturns(yahooSym),
+      getTrailingReturns("^GSPC"),
+    ]);
 
     if (!raw) {
       return res.status(404).json({
@@ -225,9 +288,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const payload = buildPayload(sym, raw);
-    cache.set(sym, { data: payload, ts: Date.now() });
+    payload.trailingReturns = { stock: stockReturns, sp500: sp500Returns };
 
-    console.log(`[fundamentals] OK for ${sym}: PE=${payload.peRatio}, MCap=${payload.marketCap}`);
+    cache.set(sym, { data: payload, ts: Date.now() });
+    console.log(`[fundamentals] OK for ${sym}: PE=${payload.peRatio}, MCap=${payload.marketCap}, trailingReturns=${stockReturns ? 'yes' : 'null'}`);
     return res.json(payload);
   } catch (err: any) {
     console.error("[fundamentals] Unexpected error:", err.message || err);
