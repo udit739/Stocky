@@ -8,7 +8,7 @@ const intradayCache = new Map<string, { data: IntradayPoint[]; ts: number }>();
 
 function getCurrencySymbol(symbol: string): string {
   const clean = symbol.trim().toUpperCase();
-  if (clean.endsWith(".BSE") || clean.endsWith(".NSE")) return "₹";
+  if (clean.endsWith(".BSE") || clean.endsWith(".NSE") || clean.endsWith(".BO") || clean.endsWith(".NS")) return "₹";
   if (clean.endsWith(".LON")) return "£";
   if (clean.endsWith(".FRA") || clean.endsWith(".GER") || clean.endsWith(".EU")) return "€";
   if (clean.endsWith(".TSX") || clean.endsWith(".TO")) return "C$";
@@ -16,6 +16,17 @@ function getCurrencySymbol(symbol: string): string {
   if (clean.endsWith(".HK")) return "HK$";
   if (clean.endsWith(".T")) return "¥";
   return "$";
+}
+
+/**
+ * Converts internal symbol format to Yahoo Finance format.
+ * Alpha Vantage uses .BSE / .NSE; Yahoo Finance uses .BO / .NS
+ */
+function toYahooSymbol(symbol: string): string {
+  const upper = symbol.trim().toUpperCase();
+  if (upper.endsWith(".BSE")) return upper.replace(/\.BSE$/, ".BO");
+  if (upper.endsWith(".NSE")) return upper.replace(/\.NSE$/, ".NS");
+  return upper;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -64,7 +75,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const yahooData = await getYahooIntraday(cleanSymbol);
+    // Convert symbol to Yahoo Finance format before querying Yahoo
+    const yahooSymbol = toYahooSymbol(cleanSymbol);
+    console.log(`[intraday] Trying Yahoo Finance with symbol: ${yahooSymbol}`);
+
+    const yahooData = await getYahooIntraday(yahooSymbol);
     if (yahooData.length > 0) {
       intradayCache.set(cleanSymbol, { data: yahooData, ts: Date.now() });
       const lastDayStr = yahooData[yahooData.length - 1].date.split("T")[0];
@@ -77,8 +92,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    const hint = cleanSymbol.endsWith(".BSE") || cleanSymbol.endsWith(".NSE")
+      ? `For Indian stocks, the symbol ${yahooSymbol} was tried automatically. Markets may be closed or data temporarily unavailable.`
+      : `Try symbols like RELIANCE.NSE, TCS.BSE, or AAPL.`;
+
     return res.status(404).json({
-      error: `No intraday data available for ${cleanSymbol}. ${alphaResult.reason ? `Alpha Vantage: ${alphaResult.reason}. ` : ""}Try a Yahoo-format symbol such as RELIANCE.NS, TCS.NS, or AAPL.`,
+      error: `No intraday data available for ${cleanSymbol}. ${alphaResult.reason ? `Alpha Vantage: ${alphaResult.reason}. ` : ""}${hint}`,
     });
   } catch (error: any) {
     console.error("Error fetching intraday data:", error.message || error);
