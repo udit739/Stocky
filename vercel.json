@@ -32,6 +32,10 @@
             "dest": "/api/fundamentals.ts"
         },
         {
+            "src": "/api/market-overview",
+            "dest": "/api/market-overview.ts"
+        },
+        {
             "src": "/api/intraday",
             "dest": "/api/intraday.ts"
         },
